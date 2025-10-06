@@ -1,0 +1,44 @@
+name: agcluster-container
+
+services:
+  # AgCluster API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount source code for development
+      - ./src:/app/src
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_DEBUG=true
+      - DOCKER_NETWORK=agcluster-container_agcluster-network
+      - AGENT_IMAGE=agcluster/agent:latest
+      - LOG_LEVEL=info
+    depends_on:
+      - agent-builder
+    networks:
+      - agcluster-network
+
+  # Build agent image (runs once)
+  agent-builder:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.agent
+    image: agcluster/agent:latest
+    command: ["echo", "Agent image built successfully"]
+    networks:
+      - agcluster-network
+
+networks:
+  agcluster-network:
+    driver: bridge
+
+volumes:
+  agcluster-workspaces:
+    driver: local

@@ -1,0 +1,44 @@
+FROM python:3.11-slim
+
+# Install system dependencies including Node.js
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    ca-certificates \
+    build-essential \
+    procps \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Claude Code CLI globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Create non-root user for security
+RUN useradd -m -u 1000 agentuser && \
+    mkdir -p /workspace /app && \
+    chown -R agentuser:agentuser /workspace /app
+
+# Copy requirements and install Python dependencies
+COPY container/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+    rm /tmp/requirements.txt
+
+# Copy agent server
+COPY container/agent_server.py /app/agent_server.py
+
+# Switch to non-root user
+USER agentuser
+
+# Set working directory
+WORKDIR /workspace
+
+# Expose WebSocket port
+EXPOSE 8765
+
+# Health check - check if process is running instead of probing the port
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD pgrep -f "python /app/agent_server.py" || exit 1
+
+# Start agent server
+CMD ["python", "/app/agent_server.py"]

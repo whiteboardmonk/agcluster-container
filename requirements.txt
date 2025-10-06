@@ -1,0 +1,13 @@
+# Core dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Docker SDK
+docker>=7.0.0
+
+# Utilities
+python-multipart>=0.0.6
+sse-starlette>=1.8.2
+python-dotenv>=1.0.0

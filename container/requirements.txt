@@ -1,0 +1,11 @@
+# Claude Agent SDK
+claude-agent-sdk>=0.1.0
+anthropic>=0.40.0
+
+# WebSocket server
+websockets>=12.0
+
+# Data science libraries (optional, can be extended)
+pandas>=2.1.0
+numpy>=1.26.0
+matplotlib>=3.8.0

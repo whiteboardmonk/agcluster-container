@@ -1,0 +1,238 @@
+"""WebSocket server running inside Docker container - wraps Claude Agent SDK"""
+
+import asyncio
+import websockets
+import json
+import logging
+import os
+import sys
+from typing import Optional, Dict, Any
+from datetime import datetime, timezone
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
+logger = logging.getLogger(__name__)
+
+
+class AgentServer:
+    """WebSocket server managing Claude SDK inside container"""
+
+    def __init__(self):
+        self.agent_id = os.environ.get("AGENT_ID", "unknown")
+        self.api_key = os.environ.get("ANTHROPIC_API_KEY")
+        self.system_prompt = os.environ.get("SYSTEM_PROMPT", "You are a helpful AI assistant.")
+        self.allowed_tools = os.environ.get("ALLOWED_TOOLS", "Bash,Read,Write").split(",")
+        self.sdk_client = None  # Will be initialized in async context
+
+        if not self.api_key:
+            raise ValueError("ANTHROPIC_API_KEY environment variable is required")
+
+    async def initialize_sdk(self):
+        """Initialize Claude SDK client (call once at startup)"""
+        try:
+            from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
+
+            # Configure Claude SDK options
+            options = ClaudeAgentOptions(
+                cwd="/workspace",
+                system_prompt=self.system_prompt,
+                allowed_tools=self.allowed_tools,
+                permission_mode="acceptEdits"  # Auto-approve edits
+            )
+
+            # Create client (maintains session across queries)
+            self.sdk_client = ClaudeSDKClient(options)
+            await self.sdk_client.__aenter__()
+
+            logger.info(f"Claude SDK client initialized for agent {self.agent_id}")
+        except Exception as e:
+            logger.error(f"Failed to initialize Claude SDK: {e}", exc_info=True)
+            raise
+
+    async def handle_connection(self, websocket):
+        """Handle WebSocket connection from host"""
+        client_id = id(websocket)
+        logger.info(f"Client {client_id} connected to agent {self.agent_id}")
+
+        try:
+            async for message in websocket:
+                try:
+                    data = json.loads(message)
+
+                    if data.get("type") == "query":
+                        await self.process_query(websocket, data.get("content", ""))
+
+                    elif data.get("type") == "interrupt":
+                        await self.handle_interrupt(client_id)
+
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON received: {e}")
+                    await websocket.send(json.dumps({
+                        "type": "error",
+                        "message": "Invalid JSON format"
+                    }))
+
+        except websockets.exceptions.ConnectionClosed:
+            logger.info(f"Client {client_id} disconnected")
+        except Exception as e:
+            logger.error(f"Error handling connection: {e}", exc_info=True)
+
+    async def process_query(self, websocket, query: str):
+        """Process query with Claude SDK and stream responses"""
+        try:
+            if not self.sdk_client:
+                raise RuntimeError("Claude SDK client not initialized")
+
+            logger.info(f"Processing query: {query[:100]}...")
+
+            # Send query to Claude SDK client (maintains session)
+            await self.sdk_client.query(query)
+
+            # Stream responses from the session
+            message_count = 0
+            async for message in self.sdk_client.receive_messages():
+                message_count += 1
+
+                # Format and send message
+                formatted = self._format_message(message)
+                if formatted:
+                    await websocket.send(json.dumps({
+                        "type": "message",
+                        "data": formatted,
+                        "sequence": message_count
+                    }))
+
+                # Check for completion (ResultMessage indicates completion)
+                if type(message).__name__ == 'ResultMessage':
+                    await websocket.send(json.dumps({
+                        "type": "complete",
+                        "status": "success",
+                        "total_messages": message_count
+                    }))
+                    break
+
+        except Exception as e:
+            logger.error(f"Error processing query: {e}", exc_info=True)
+            await websocket.send(json.dumps({
+                "type": "error",
+                "message": str(e),
+                "error_type": type(e).__name__
+            }))
+
+    async def handle_interrupt(self, client_id: int):
+        """Handle interrupt request"""
+        logger.info(f"Interrupt requested for client {client_id}")
+        # TODO: Implement Claude SDK interrupt when available
+
+    def _format_message(self, message) -> Optional[Dict[str, Any]]:
+        """
+        Classify Claude SDK messages for OpenAI-compatible formatting
+
+        Returns dict with 'type' field:
+        - type: "content" → User-facing assistant response
+        - type: "tool_use" → Tool execution info
+        - type: "metadata" → Usage stats, cost info (from ResultMessage)
+        - type: "system" → Debug/session info
+        - None → Skip this message
+        """
+        try:
+            # Import types for checking
+            from claude_agent_sdk.types import AssistantMessage, ToolUseBlock, TextBlock
+
+            # Try to import additional message types (may not all be available)
+            try:
+                from claude_agent_sdk.types import SystemMessage, ResultMessage, UserMessage
+            except ImportError:
+                SystemMessage = None
+                ResultMessage = None
+                UserMessage = None
+
+            # ===== USER-FACING CONTENT =====
+            if isinstance(message, AssistantMessage):
+                # Extract text content
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        return {
+                            "type": "content",
+                            "role": "assistant",
+                            "content": block.text
+                        }
+                    elif isinstance(block, ToolUseBlock):
+                        return {
+                            "type": "tool_use",
+                            "tool_name": block.name,
+                            "tool_input": block.input,
+                            "content": f"Using tool: {block.name}"
+                        }
+
+            # ===== METADATA (extract but don't include in user-facing content) =====
+            if ResultMessage and isinstance(message, ResultMessage):
+                return {
+                    "type": "metadata",
+                    "final_content": getattr(message, 'result', ''),
+                    "cost_usd": getattr(message, 'total_cost_usd', 0),
+                    "duration_ms": getattr(message, 'duration_ms', 0),
+                    "usage": {
+                        "input_tokens": getattr(message, 'usage', {}).get("input_tokens", 0),
+                        "output_tokens": getattr(message, 'usage', {}).get("output_tokens", 0),
+                        "total_tokens": (
+                            getattr(message, 'usage', {}).get("input_tokens", 0) +
+                            getattr(message, 'usage', {}).get("output_tokens", 0)
+                        )
+                    }
+                }
+
+            # ===== SYSTEM/DEBUG (skip in production responses) =====
+            if SystemMessage and isinstance(message, SystemMessage):
+                return {
+                    "type": "system",
+                    "subtype": getattr(message, 'subtype', ''),
+                    "session_id": getattr(message, 'data', {}).get("session_id", "")
+                }
+
+            # ===== SKIP USER ECHO =====
+            if UserMessage and isinstance(message, UserMessage):
+                return None  # Don't echo user messages back
+
+            # Unknown message type - skip
+            return None
+
+        except Exception as e:
+            logger.error(f"Error formatting message: {e}")
+            return None
+
+
+async def main():
+    """Start WebSocket server"""
+    agent_id = os.environ.get("AGENT_ID", "unknown")
+    logger.info(f"Starting agent server for {agent_id}")
+    logger.info("Listening on 0.0.0.0:8765")
+
+    server = AgentServer()
+
+    # Initialize Claude SDK client (maintains session across queries)
+    await server.initialize_sdk()
+
+    async with websockets.serve(
+        server.handle_connection,
+        "0.0.0.0",
+        8765,
+        ping_interval=20,
+        ping_timeout=10
+    ):
+        logger.info("Agent server ready")
+        await asyncio.Future()  # Run forever
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Server shutting down...")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}", exc_info=True)
+        sys.exit(1)

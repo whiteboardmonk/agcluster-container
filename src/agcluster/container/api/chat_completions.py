@@ -18,7 +18,8 @@ router = APIRouter()
 async def chat_completions(
     request: ChatCompletionRequest,
     authorization: Optional[str] = Header(None),
-    x_conversation_id: Optional[str] = Header(None, alias="X-Conversation-ID")
+    x_conversation_id: Optional[str] = Header(None, alias="X-Conversation-ID"),
+    x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
 ):
     """
     OpenAI-compatible chat completions endpoint with session-based conversation management
@@ -26,10 +27,15 @@ async def chat_completions(
     This endpoint accepts requests from LibreChat and other OpenAI-compatible clients.
     It maintains persistent Claude SDK sessions per conversation for context continuity.
 
+    Two modes of operation:
+    1. Session-based (new): Provide X-Session-ID from /api/agents/launch
+    2. Conversation-based (legacy): Provide X-Conversation-ID from LibreChat
+
     Args:
         request: Chat completion request
         authorization: Bearer token (Anthropic API key)
-        x_conversation_id: Optional conversation ID from LibreChat
+        x_conversation_id: Optional conversation ID from LibreChat (legacy mode)
+        x_session_id: Optional session ID from /api/agents/launch (new mode)
 
     Returns:
         Streaming or non-streaming response in OpenAI format
@@ -59,18 +65,31 @@ async def chat_completions(
         raise HTTPException(status_code=400, detail="No user message found in request")
 
     try:
-        # Get or create session-based container
-        # This maintains the same Claude SDK session across all messages in the conversation
-        agent_container = await session_manager.get_or_create_session(
-            conversation_id=x_conversation_id,
-            api_key=api_key,
-            system_prompt=None,  # Use default from config
-            allowed_tools=None   # Use default from config
-        )
+        # Two modes: session-based (new) or conversation-based (legacy)
+        if x_session_id:
+            # New mode: Use existing session from /api/agents/launch
+            logger.info(f"Using existing session: {x_session_id}")
+            from agcluster.container.core.session_manager import SessionNotFoundError
+            try:
+                agent_container = await session_manager.get_session(x_session_id)
+            except SessionNotFoundError:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Session {x_session_id} not found. Launch a new session via /api/agents/launch"
+                )
+        else:
+            # Legacy mode: Get or create session based on conversation ID
+            logger.info(f"Using conversation-based session (legacy mode)")
+            agent_container = await session_manager.get_or_create_session(
+                conversation_id=x_conversation_id,
+                api_key=api_key,
+                system_prompt=None,  # Use default from config
+                allowed_tools=None   # Use default from config
+            )
 
         logger.info(
             f"Processing message for agent {agent_container.agent_id} "
-            f"(conversation: {x_conversation_id or 'default'})"
+            f"(session: {x_session_id or x_conversation_id or 'default'})"
         )
 
         # Query the container (session persists across queries)

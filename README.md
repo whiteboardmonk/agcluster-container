@@ -4,13 +4,13 @@
 
 > 🚀 **OpenAI-compatible API for Claude Agent SDK**
 
-[![Tests](https://img.shields.io/badge/tests-76%20passing-brightgreen)]()
-[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-133%20passing-brightgreen)]()
+[![Coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)]()
 [![Docker](https://img.shields.io/badge/docker-required-blue)]()
 [![Python](https://img.shields.io/badge/python-3.11+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
-[Why AgCluster?](#why-agcluster-container) • [Features](#features) • [Quick Start](#quick-start) • [Session Management](#session-management) • [Architecture](#architecture) • [Documentation](#documentation)
+[Why AgCluster?](#why-agcluster-container) • [Features](#features) • [Quick Start](#quick-start) • [Agent Configurations](#agent-configurations) • [API Reference](#api-reference) • [Architecture](#architecture) • [Documentation](#documentation)
 
 </div>
 
@@ -26,8 +26,10 @@
 
 ### ✅ Production Ready
 
-- ✅ **90% Test Coverage** - 76 tests passing (9 E2E tests skipped - require Docker)
-- ✅ **Conversation-Based Sessions** - Persistent containers per conversation thread
+- ✅ **83% Test Coverage** - 133 tests passing (115 unit + 18 integration)
+- ✅ **Agent Configuration System** - 4 preset configs + inline config support
+- ✅ **Config-Based Launching** - Launch agents with specialized tools and resource limits
+- ✅ **Session Management** - Persistent containers per conversation with config tracking
 - ✅ **Context Preservation** - Full conversation context maintained across messages
 - ✅ **Auto-Cleanup** - Background task removes idle sessions (30-min timeout)
 - ✅ **Robustness Verified** - Handles 10+ concurrent conversations
@@ -56,19 +58,31 @@
 
 - 🔌 **OpenAI-Compatible API** - Standard `/chat/completions` endpoint, drop-in replacement for OpenAI API
 - 🤖 **Claude Agent SDK Access** - Full agent capabilities (same harness powering Claude Code) via API
-- 🛠️ **Complete Tool Suite** - Bash, Read, Write, Grep, Task, WebFetch, WebSearch, MCP extensibility
+- 🛠️ **Complete Tool Suite** - Bash, Read, Write, Grep, Task, WebFetch, WebSearch, NotebookEdit, TodoWrite, MCP extensibility
 - 🎨 **LibreChat Ready** - Works out-of-the-box with LibreChat, Open WebUI, and any OpenAI client
 - 🔐 **BYOK (Bring Your Own Key)** - Users provide their own Anthropic API keys (never stored)
 - 📡 **OpenAI Streaming Support** - Real-time SSE streaming responses in OpenAI format (both streaming and non-streaming modes)
 - 🐳 **Multi-Session Isolation** - Run 10+ concurrent sessions with full container isolation
 - 🔒 **Security Hardened** - Minimal privileges, dropped capabilities, network isolation, resource limits
 
+### Agent Configuration System
+
+- 📋 **Preset Configurations** - 4 ready-to-use agent templates (code-assistant, research-agent, data-analysis, fullstack-team)
+- ⚙️ **Custom Configurations** - Define your own agents with specific tools, prompts, and resource limits
+- 🎯 **Tool Specialization** - Configure exactly which tools each agent can access
+- 🤝 **Multi-Agent Orchestration** - Fullstack-team preset with 3 specialized sub-agents (frontend, backend, devops)
+- 📓 **Jupyter Support** - Data-analysis preset includes NotebookEdit for reproducible analysis workflows
+- 💾 **Resource Management** - Per-agent CPU, memory, and storage limits
+- 🔗 **MCP Server Integration** - Configure custom Model Context Protocol servers per agent
+- 📝 **Task Tracking** - All presets include TodoWrite for multi-step workflow visibility
+
 ### Session Management
 
-- 💬 **Conversation-Based Containers** - One persistent container per conversation thread
+- 💬 **Config-Based Sessions** - Launch agents from presets or inline configs via `/api/agents/launch`
 - 🔄 **Context Preservation** - Same Claude SDK session reused across all messages
 - 🧹 **Auto-Cleanup** - Background task removes idle sessions after 30 minutes
-- 📝 **Conversation ID Tracking** - LibreChat `X-Conversation-ID` header support
+- 📝 **Dual-Mode Routing** - Session-based (`X-Session-ID`) or conversation-based (`X-Conversation-ID`)
+- 🎯 **Session Tracking** - List active sessions, view details, stop sessions via API
 - ⚙️ **Resource Efficiency** - One container per active conversation, not per message
 
 ### Technical Features
@@ -76,7 +90,7 @@
 - ⚡ **Adaptive Readiness Detection** - WebSocket-based container health checks for 100% reliability
 - 🎯 **Session Isolation** - Each container maintains independent Claude SDK session with unique ID
 - 🌐 **Custom Networking** - Bridge network isolation for security
-- 📊 **Test-Driven Development** - Comprehensive test suite (76 passing tests + 9 E2E tests) with 90% code coverage
+- 📊 **Test-Driven Development** - Comprehensive test suite (133 tests: 115 unit + 18 integration) with 83% code coverage
 - 🚀 **Lazy Initialization** - Docker client lazy-loads for better development experience
 - 🔄 **WebSocket Communication** - Bidirectional real-time communication between API and agents
 
@@ -171,6 +185,109 @@ endpoints:
         default: ["claude-sonnet-4.5"]
 ```
 
+## 🎯 Agent Configurations
+
+AgCluster provides preset agent configurations optimized for different use cases, plus the ability to create custom configurations.
+
+### Preset Agents
+
+#### 1. 🔧 Code Assistant (`code-assistant`)
+**Full-stack development agent with comprehensive tooling**
+
+- **Tools**: Bash, Read, Write, Edit, Grep, Glob, Task, TodoWrite
+- **System Prompt**: Claude Code preset with TDD emphasis
+- **Resources**: 2 CPUs, 4GB RAM, 10GB storage
+- **Use Cases**: Feature implementation, debugging, refactoring, testing
+
+```bash
+curl -X POST http://localhost:8000/api/agents/launch \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "sk-ant-...","config_id": "code-assistant"}'
+```
+
+#### 2. 🔍 Research Agent (`research-agent`)
+**Web research and information analysis specialist**
+
+- **Tools**: WebFetch, WebSearch, Read, Write, Grep, TodoWrite
+- **Resources**: 1 CPU, 2GB RAM, 5GB storage
+- **Use Cases**: Research reports, source verification, information synthesis
+
+```bash
+curl -X POST http://localhost:8000/api/agents/launch \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "sk-ant-...","config_id": "research-agent"}'
+```
+
+#### 3. 📊 Data Analysis Agent (`data-analysis`)
+**Statistical analysis and data visualization specialist**
+
+- **Tools**: Bash, Read, Write, Edit, Grep, Glob, NotebookEdit, TodoWrite
+- **Focus**: Pandas, numpy, scipy, scikit-learn, matplotlib, seaborn
+- **Resources**: 2 CPUs, 6GB RAM, 15GB storage
+- **Use Cases**: Exploratory data analysis, statistical testing, Jupyter workflows, machine learning
+
+```bash
+curl -X POST http://localhost:8000/api/agents/launch \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "sk-ant-...","config_id": "data-analysis"}'
+```
+
+#### 4. 👥 Full-Stack Team (`fullstack-team`)
+**Multi-agent orchestrator with specialized sub-agents**
+
+- **Main Agent Tools**: Task, Read, Glob, Grep, TodoWrite
+- **Sub-agents**:
+  - **Frontend**: React, Next.js, Tailwind CSS (Sonnet model)
+  - **Backend**: Python, FastAPI, databases (Sonnet model)
+  - **DevOps**: Docker, CI/CD, deployment (Haiku model)
+- **Resources**: 3 CPUs, 6GB RAM, 10GB storage
+- **Use Cases**: Complex features requiring multiple specialists, coordinated team development
+
+```bash
+curl -X POST http://localhost:8000/api/agents/launch \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "sk-ant-...","config_id": "fullstack-team"}'
+```
+
+### Custom Configurations
+
+Create custom agents with inline configurations:
+
+```bash
+curl -X POST http://localhost:8000/api/agents/launch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "sk-ant-...",
+    "config": {
+      "id": "my-custom-agent",
+      "name": "My Custom Agent",
+      "allowed_tools": ["Bash", "Read", "Write"],
+      "system_prompt": "You are a helpful assistant specializing in...",
+      "permission_mode": "acceptEdits",
+      "resource_limits": {
+        "cpu_quota": 100000,
+        "memory_limit": "2g"
+      }
+    }
+  }'
+```
+
+### Configuration Management
+
+```bash
+# List all available configurations
+curl http://localhost:8000/api/configs/
+
+# Get specific configuration details
+curl http://localhost:8000/api/configs/code-assistant
+
+# Response includes tools, resources, prompts, etc.
+```
+
+See `configs/README.md` for detailed configuration documentation.
+
+---
+
 ## 🏗️ Architecture
 
 ### The API Wrapper Pattern
@@ -234,12 +351,104 @@ OpenAI Client Request 10 → Container J (Claude SDK Session: xyz-000) ┘  isol
 
 ## API Reference
 
-### POST /chat/completions
+### Configuration Endpoints
 
-OpenAI-compatible chat completions endpoint.
+#### GET /api/configs/
+List all available agent configurations.
+
+**Response:**
+```json
+{
+  "configs": [
+    {
+      "id": "code-assistant",
+      "name": "Code Assistant",
+      "description": "Full-stack development agent",
+      "allowed_tools": ["Bash", "Read", "Write", ...],
+      "has_mcp_servers": false,
+      "has_sub_agents": false
+    }
+  ],
+  "total": 4
+}
+```
+
+#### GET /api/configs/{config_id}
+Get detailed configuration for a specific agent.
+
+**Response:**
+```json
+{
+  "id": "code-assistant",
+  "name": "Code Assistant",
+  "allowed_tools": ["Bash", "Read", "Write", ...],
+  "system_prompt": {...},
+  "permission_mode": "acceptEdits",
+  "resource_limits": {
+    "cpu_quota": 200000,
+    "memory_limit": "4g"
+  }
+}
+```
+
+### Agent Management Endpoints
+
+#### POST /api/agents/launch
+Launch a new agent from configuration.
+
+**Request:**
+```json
+{
+  "api_key": "sk-ant-...",
+  "config_id": "code-assistant"  // Or provide inline "config"
+}
+```
+
+**Response:**
+```json
+{
+  "session_id": "conv-abc123...",
+  "agent_id": "agent-xyz789",
+  "config_id": "code-assistant",
+  "status": "running"
+}
+```
+
+#### GET /api/agents/sessions
+List all active agent sessions.
+
+**Response:**
+```json
+{
+  "sessions": [
+    {
+      "session_id": "conv-abc123",
+      "agent_id": "agent-xyz789",
+      "config_id": "code-assistant",
+      "status": "running",
+      "created_at": "2025-01-15T...",
+      "last_active": "2025-01-15T..."
+    }
+  ],
+  "total": 1
+}
+```
+
+#### GET /api/agents/sessions/{session_id}
+Get details about a specific session.
+
+#### DELETE /api/agents/sessions/{session_id}
+Stop and remove a session.
+
+### Chat Completions Endpoint
+
+#### POST /chat/completions
+OpenAI-compatible chat completions endpoint with dual-mode support.
 
 **Headers:**
 - `Authorization: Bearer YOUR_ANTHROPIC_API_KEY`
+- `X-Session-ID: conv-abc123...` (for config-based sessions from `/launch`)
+- OR `X-Conversation-ID: conv-xyz...` (legacy mode for LibreChat)
 - `Content-Type: application/json`
 
 **Request Body:**
@@ -257,8 +466,13 @@ OpenAI-compatible chat completions endpoint.
 - Streaming (SSE): Real-time text chunks in OpenAI format
 - Non-streaming: Complete response in OpenAI format
 
-### GET /health
+**Two modes:**
+1. **Session-based** (new): Use `X-Session-ID` from `/api/agents/launch`
+2. **Conversation-based** (legacy): Use `X-Conversation-ID` for LibreChat compatibility
 
+### Utility Endpoints
+
+#### GET /health
 Health check endpoint.
 
 **Response:**
@@ -271,21 +485,72 @@ Health check endpoint.
 
 ## Configuration
 
-Edit `.env` to configure:
+### Environment Variables
+
+Edit `.env` to configure default settings:
 
 ```bash
 # API Settings
 API_HOST=0.0.0.0
 API_PORT=8000
+API_DEBUG=true
 
-# Container Resources
+# Agent Image
+AGENT_IMAGE=agcluster/agent:latest
+
+# Default Container Resources (used when no config specified)
 CONTAINER_CPU_QUOTA=200000  # 2 CPUs
 CONTAINER_MEMORY_LIMIT=4g
+CONTAINER_STORAGE_LIMIT=10g
 
-# Agent Defaults
+# Default Agent Settings
 DEFAULT_SYSTEM_PROMPT="You are a helpful AI assistant."
 DEFAULT_ALLOWED_TOOLS=Bash,Read,Write,Grep
+DEFAULT_PERMISSION_MODE=acceptEdits
+DEFAULT_MAX_TURNS=100
+
+# Session Management
+SESSION_CLEANUP_INTERVAL=300      # Check every 5 minutes
+SESSION_IDLE_TIMEOUT=1800         # 30 minutes idle timeout
 ```
+
+### Agent Configuration Files
+
+Agent configurations are stored in `configs/presets/` as YAML files. Each configuration defines:
+
+- **Tools**: Which tools the agent can access
+- **System Prompt**: Instructions and specialization
+- **Resource Limits**: CPU, memory, storage constraints
+- **Sub-agents**: For multi-agent orchestration (optional)
+- **MCP Servers**: Custom tool servers (optional)
+
+**Example configuration structure:**
+```yaml
+id: my-agent
+name: My Custom Agent
+description: Brief description
+version: 1.0.0
+
+system_prompt: |
+  You are a specialist in...
+
+allowed_tools:
+  - Bash
+  - Read
+  - Write
+  - TodoWrite
+
+permission_mode: acceptEdits
+
+resource_limits:
+  cpu_quota: 200000      # 2 CPUs (100000 = 1 CPU)
+  memory_limit: 4g       # 4GB RAM
+  storage_limit: 10g     # 10GB disk
+
+max_turns: 100
+```
+
+See `configs/README.md` for complete configuration documentation and examples.
 
 ## 📊 Performance
 
@@ -298,7 +563,7 @@ DEFAULT_ALLOWED_TOOLS=Bash,Read,Write,Grep
 | **Concurrent Sessions** | 10+ verified (100% success) |
 | **Response Time (single)** | 5-8 seconds |
 | **Response Time (10 concurrent)** | 10-15 seconds each |
-| **Test Success Rate** | 100% (76/76 passing) |
+| **Test Success Rate** | 100% (133/133 passing) |
 
 ### Tested Scenarios
 
@@ -359,25 +624,40 @@ docker compose build
 # Install package in development mode first
 pip install -e ".[dev]"
 
-# Run all tests (76 passing)
+# Run all tests (133 passing)
 pytest tests/
 
-# Run with coverage (90% coverage)
+# Run with coverage (83% coverage)
 pytest --cov=agcluster.container tests/
 
 # Run specific test categories
-pytest tests/unit/                    # 63 unit tests
-pytest tests/integration/             # 13 integration tests
+pytest tests/unit/                    # 115 unit tests
+pytest tests/integration/             # 18 integration tests
 
-# E2E/Robustness tests (9 tests - require Docker, marked as skipped by default)
-# To run manually, remove skip marker from tests/robustness/test_concurrent_sessions.py
+# Test by component
+pytest tests/unit/test_translator.py          # 21 tests - Message translation
+pytest tests/unit/test_container_manager.py   # 25 tests - Container lifecycle
+pytest tests/unit/test_session_manager.py     # 26 tests - Session management
+pytest tests/unit/test_config_loader.py       # 14 tests - Configuration loading
+pytest tests/unit/test_agent_config.py        # 29 tests - Agent config models
+pytest tests/integration/test_api_endpoints.py # 13 tests - API endpoints
+pytest tests/integration/test_config_api.py    # 5 tests - Config endpoints
+
+# E2E/Robustness tests (require Docker, marked as skipped by default)
 pytest tests/robustness/ --run-skipped
 ```
 
 **Test Summary:**
-- ✅ **63 Unit Tests** - Testing core components (translator, container manager, session manager)
-- ✅ **13 Integration Tests** - Testing API endpoints and request validation
-- ⏭️ **9 Robustness Tests** - E2E tests requiring Docker (skipped by default, run manually for full validation)
+- ✅ **115 Unit Tests** - Core components (translator, containers, sessions, configs)
+- ✅ **18 Integration Tests** - API endpoints, validation, config management
+- ⏭️ **Robustness Tests** - E2E tests requiring Docker (skipped by default)
+
+**Coverage by Component:**
+- Message Translation: 21 tests (OpenAI ↔ Claude format conversion)
+- Container Management: 25 tests (lifecycle, networking, cleanup)
+- Session Management: 26 tests (creation, reuse, auto-cleanup)
+- Configuration System: 43 tests (loading, validation, preset discovery)
+- API Endpoints: 18 tests (completions, configs, agents)
 
 ### Monitoring & Troubleshooting
 
@@ -499,20 +779,26 @@ Python-capable agents for data tasks:
 - [x] WebSocket communication for real-time streaming
 - [x] Auto-cleanup of idle sessions (30-min timeout)
 - [x] Security hardening (dropped capabilities, resource limits)
-- [x] Comprehensive test suite (76 tests passing, 90% coverage)
+- [x] Agent configuration system with 4 preset configs
+- [x] Config-based launching via /api/agents/launch
+- [x] Custom agent creation with inline configs
+- [x] Multi-agent orchestration (fullstack-team preset)
+- [x] Jupyter notebook support (data-analysis preset with NotebookEdit)
+- [x] Task tracking for all presets (TodoWrite tool)
+- [x] Comprehensive test suite (133 tests passing, 83% coverage)
 - [x] Production-ready robustness
 
 ### 🔮 Future Enhancements
 - [ ] Multi-modal input support (images, files, PDFs)
 - [ ] File attachment handling for document analysis
-- [ ] Custom agent templates and configurations
+- [ ] Additional agent presets (security-auditor, content-writer, etc.)
 - [ ] Multi-user authentication and authorization
 - [ ] Usage metering and quotas
 - [ ] Web dashboard UI for management
 - [ ] Monitoring and metrics (Prometheus/Grafana)
 - [ ] Kubernetes deployment guide
-- [ ] Custom MCP server integration
 - [ ] Agent marketplace and sharing
+- [ ] Conversation export and history persistence
 
 ---
 
@@ -599,9 +885,10 @@ AgCluster Container is the **foundational API layer** in the AgCluster ecosystem
 
 ✅ **agcluster-container** - OpenAI-compatible API wrapper for Claude Agent SDK *(this project)*
 - Drop-in replacement for OpenAI API endpoints
-- Multi-tenant session isolation
+- Multi-tenant session isolation with config-based launching
+- 4 preset agent configurations + custom inline configs
 - 10+ concurrent sessions verified
-- 76/76 tests passing, 90% coverage
+- 133/133 tests passing, 83% coverage
 
 ### In Development
 

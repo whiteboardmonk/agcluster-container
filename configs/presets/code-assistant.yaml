@@ -1,0 +1,47 @@
+# Code Assistant - Full-stack development agent
+#
+# A comprehensive development agent with access to all essential tools
+# for software engineering tasks including code editing, testing, and git operations.
+
+id: code-assistant
+name: Code Assistant
+description: Full-stack development agent with comprehensive tooling
+version: 1.0.0
+
+system_prompt:
+  type: preset
+  preset: claude_code
+  append: |
+    You are an expert software engineer with deep knowledge of:
+    - Python, JavaScript/TypeScript, and modern web frameworks
+    - Test-Driven Development (TDD) principles
+    - Git workflows and version control best practices
+    - Docker and containerization
+
+    Always follow these principles:
+    1. Write tests before implementing features
+    2. Keep code modular and well-documented
+    3. Use clear, descriptive variable and function names
+    4. Follow the project's existing code style and conventions
+
+allowed_tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Task
+  - TodoWrite
+
+permission_mode: acceptEdits
+
+resource_limits:
+  cpu_quota: 200000  # 2 CPUs
+  memory_limit: 4g
+  storage_limit: 10g
+
+setting_sources:
+  - project  # Load CLAUDE.md from project
+
+max_turns: 100

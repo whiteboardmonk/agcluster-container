@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 
@@ -24,31 +25,90 @@ class AgentServer:
     def __init__(self):
         self.agent_id = os.environ.get("AGENT_ID", "unknown")
         self.api_key = os.environ.get("ANTHROPIC_API_KEY")
-        self.system_prompt = os.environ.get("SYSTEM_PROMPT", "You are a helpful AI assistant.")
-        self.allowed_tools = os.environ.get("ALLOWED_TOOLS", "Bash,Read,Write").split(",")
+        self.config_path = os.environ.get("CONFIG_PATH", "/config/agent-config.json")
+        self.config = None
         self.sdk_client = None  # Will be initialized in async context
 
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable is required")
+
+        # Load configuration
+        self._load_config()
+
+    def _load_config(self):
+        """Load agent configuration from mounted file or environment variables"""
+        config_file = Path(self.config_path)
+
+        if config_file.exists():
+            # Load from mounted config file (Phase 1+ approach)
+            logger.info(f"Loading config from {self.config_path}")
+            try:
+                with open(config_file, 'r') as f:
+                    self.config = json.load(f)
+
+                logger.info(f"Loaded config: {self.config.get('id')} - {self.config.get('name')}")
+                logger.info(f"Tools: {self.config.get('allowed_tools')}")
+                logger.info(f"Permission mode: {self.config.get('permission_mode', 'default')}")
+
+            except Exception as e:
+                logger.error(f"Failed to load config from {self.config_path}: {e}")
+                raise ValueError(f"Invalid config file: {e}")
+        else:
+            # Fallback to environment variables (legacy/backward compatible)
+            logger.info("No config file found, using environment variables (legacy mode)")
+            self.config = {
+                "id": "legacy",
+                "name": "Legacy Agent",
+                "allowed_tools": os.environ.get("ALLOWED_TOOLS", "Bash,Read,Write").split(","),
+                "system_prompt": os.environ.get("SYSTEM_PROMPT", "You are a helpful AI assistant."),
+                "permission_mode": "acceptEdits"
+            }
 
     async def initialize_sdk(self):
         """Initialize Claude SDK client (call once at startup)"""
         try:
             from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
 
+            # Build options from config
+            options_dict = {
+                "cwd": "/workspace",
+                "allowed_tools": self.config.get("allowed_tools", ["Bash", "Read", "Write"]),
+                "permission_mode": self.config.get("permission_mode", "acceptEdits")
+            }
+
+            # Handle system prompt (string or preset object)
+            system_prompt = self.config.get("system_prompt")
+            if isinstance(system_prompt, dict):
+                # System prompt preset with optional append
+                if system_prompt.get("type") == "preset":
+                    options_dict["system_prompt_preset"] = system_prompt.get("preset")
+                    if system_prompt.get("append"):
+                        options_dict["system_prompt_append"] = system_prompt.get("append")
+            elif isinstance(system_prompt, str):
+                # Direct string prompt
+                options_dict["system_prompt"] = system_prompt
+
+            # Add MCP servers if configured
+            mcp_servers = self.config.get("mcp_servers", {})
+            if mcp_servers:
+                options_dict["mcp_servers"] = mcp_servers
+                logger.info(f"Configured {len(mcp_servers)} MCP servers")
+
+            # Add sub-agents if configured (multi-agent orchestration)
+            agents = self.config.get("agents", {})
+            if agents:
+                options_dict["agents"] = agents
+                logger.info(f"Configured {len(agents)} sub-agents: {list(agents.keys())}")
+
             # Configure Claude SDK options
-            options = ClaudeAgentOptions(
-                cwd="/workspace",
-                system_prompt=self.system_prompt,
-                allowed_tools=self.allowed_tools,
-                permission_mode="acceptEdits"  # Auto-approve edits
-            )
+            options = ClaudeAgentOptions(**options_dict)
 
             # Create client (maintains session across queries)
             self.sdk_client = ClaudeSDKClient(options)
             await self.sdk_client.__aenter__()
 
             logger.info(f"Claude SDK client initialized for agent {self.agent_id}")
+            logger.info(f"Config: {self.config.get('id')} with tools: {options_dict['allowed_tools']}")
         except Exception as e:
             logger.error(f"Failed to initialize Claude SDK: {e}", exc_info=True)
             raise

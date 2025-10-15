@@ -1,8 +1,11 @@
 """Pydantic models for API requests and responses"""
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any, Literal
+from typing import List, Optional, Dict, Any, Literal, Union
 from datetime import datetime
+
+# Import AgentConfig from agent_config module
+from agcluster.container.models.agent_config import AgentConfig as FullAgentConfig
 
 
 # OpenAI-compatible schemas
@@ -87,3 +90,62 @@ class AgentCreateResponse(BaseModel):
     agent_id: str
     status: str
     message: str
+
+
+# New schemas for config-based agent launch
+
+class LaunchRequest(BaseModel):
+    """Request to launch agent from configuration"""
+    api_key: str = Field(..., description="Anthropic API key (BYOK)")
+    config_id: Optional[str] = Field(None, description="ID of saved configuration to use")
+    config: Optional[FullAgentConfig] = Field(None, description="Inline configuration")
+
+    def validate_config_or_id(self):
+        """Ensure either config_id or config is provided"""
+        if not self.config_id and not self.config:
+            raise ValueError("Either config_id or config must be provided")
+        return self
+
+
+class LaunchResponse(BaseModel):
+    """Response after launching agent"""
+    session_id: str = Field(..., description="Session ID for chat operations")
+    agent_id: str = Field(..., description="Container agent ID")
+    config_id: str = Field(..., description="Config ID used (inline-* for inline configs)")
+    status: Literal["running", "error"] = "running"
+    message: Optional[str] = None
+
+
+class SessionInfo(BaseModel):
+    """Information about an active session"""
+    session_id: str
+    agent_id: str
+    config_id: str
+    status: Literal["running", "idle", "error"]
+    created_at: datetime
+    last_active: datetime
+    config: Optional[FullAgentConfig] = None
+
+
+class SessionListResponse(BaseModel):
+    """Response containing list of active sessions"""
+    sessions: List[SessionInfo]
+    total: int
+
+
+class ConfigInfo(BaseModel):
+    """Summary information about an agent configuration"""
+    id: str
+    name: str
+    description: Optional[str] = None
+    version: str = "1.0.0"
+    allowed_tools: List[str]
+    has_mcp_servers: bool = False
+    has_sub_agents: bool = False
+    permission_mode: Optional[str] = None
+
+
+class ConfigListResponse(BaseModel):
+    """Response containing list of available configurations"""
+    configs: List[ConfigInfo]
+    total: int

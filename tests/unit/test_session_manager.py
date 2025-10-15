@@ -5,8 +5,9 @@ import asyncio
 from datetime import datetime, timezone, timedelta
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 
-from agcluster.container.core.session_manager import SessionManager
+from agcluster.container.core.session_manager import SessionManager, SessionNotFoundError
 from agcluster.container.core.container_manager import AgentContainer
+from agcluster.container.models.agent_config import AgentConfig
 
 
 @pytest.fixture
@@ -298,3 +299,278 @@ class TestActiveSessionsCount:
 
         await session_mgr.get_or_create_session("conv-2", "sk-ant-key")
         assert session_mgr.get_active_sessions_count() == 2
+
+
+class TestCreateSessionFromConfig:
+    """Test config-based session creation"""
+
+    @pytest.mark.asyncio
+    async def test_create_session_with_config_id(self, session_mgr, mock_container_manager):
+        """Should create session from config ID"""
+        # Mock container with config metadata
+        mock_container = Mock(spec=AgentContainer)
+        mock_container.agent_id = "test-agent-123"
+        mock_container.config_id = "code-assistant"
+        mock_container.last_active = datetime.now(timezone.utc)
+
+        mock_container_manager.create_agent_container_from_config = AsyncMock(
+            return_value=mock_container
+        )
+
+        # Mock config loader
+        with patch('agcluster.container.core.session_manager.load_config_from_id') as mock_load:
+            mock_config = AgentConfig(
+                id="code-assistant",
+                name="Code Assistant",
+                allowed_tools=["Bash", "Read"]
+            )
+            mock_load.return_value = mock_config
+
+            session_id, container = await session_mgr.create_session_from_config(
+                conversation_id="conv-123",
+                api_key="sk-ant-test-key",
+                config_id="code-assistant"
+            )
+
+            assert session_id == "conv-conv-123"
+            assert container.agent_id == "test-agent-123"
+            assert container.config_id == "code-assistant"
+            mock_load.assert_called_once_with("code-assistant")
+            mock_container_manager.create_agent_container_from_config.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_session_with_inline_config(self, session_mgr, mock_container_manager):
+        """Should create session from inline config"""
+        mock_container = Mock(spec=AgentContainer)
+        mock_container.agent_id = "test-agent-456"
+        mock_container.last_active = datetime.now(timezone.utc)
+
+        mock_container_manager.create_agent_container_from_config = AsyncMock(
+            return_value=mock_container
+        )
+
+        inline_config = AgentConfig(
+            id="custom-agent",
+            name="Custom Agent",
+            allowed_tools=["Read", "Write"]
+        )
+
+        session_id, container = await session_mgr.create_session_from_config(
+            conversation_id="conv-456",
+            api_key="sk-ant-test-key",
+            config=inline_config
+        )
+
+        assert session_id == "conv-conv-456"
+        assert container.agent_id == "test-agent-456"
+        # Should be called with inline config
+        call_args = mock_container_manager.create_agent_container_from_config.call_args
+        assert call_args[1]['config'] == inline_config
+
+    @pytest.mark.asyncio
+    async def test_create_session_without_config_raises_error(self, session_mgr):
+        """Should raise ValueError if neither config_id nor config provided"""
+        with pytest.raises(ValueError, match="Either config_id or config must be provided"):
+            await session_mgr.create_session_from_config(
+                conversation_id="conv-789",
+                api_key="sk-ant-test-key"
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_session_replaces_existing(self, session_mgr, mock_container_manager):
+        """Should replace existing session with same ID"""
+        # First container
+        container1 = Mock(spec=AgentContainer)
+        container1.agent_id = "agent-1"
+        container1.config_id = "config-1"
+        container1.last_active = datetime.now(timezone.utc)
+
+        # Second container
+        container2 = Mock(spec=AgentContainer)
+        container2.agent_id = "agent-2"
+        container2.config_id = "config-2"
+        container2.last_active = datetime.now(timezone.utc)
+
+        mock_container_manager.create_agent_container_from_config = AsyncMock(
+            side_effect=[container1, container2]
+        )
+        mock_container_manager.stop_container = AsyncMock()
+
+        config = AgentConfig(id="test", name="Test", allowed_tools=["Bash"])
+
+        # Create first session
+        await session_mgr.create_session_from_config(
+            conversation_id="conv-replace",
+            api_key="sk-ant-key",
+            config=config
+        )
+
+        # Create second session with same conversation ID
+        session_id, container = await session_mgr.create_session_from_config(
+            conversation_id="conv-replace",
+            api_key="sk-ant-key",
+            config=config
+        )
+
+        # Should have stopped first container
+        mock_container_manager.stop_container.assert_called_once_with("agent-1")
+        # Should have new container
+        assert container.agent_id == "agent-2"
+
+
+class TestGetSession:
+    """Test session retrieval"""
+
+    @pytest.mark.asyncio
+    async def test_get_existing_session(self, session_mgr, mock_container_manager):
+        """Should retrieve existing session"""
+        mock_container = Mock(spec=AgentContainer)
+        mock_container.agent_id = "test-agent"
+        mock_container.config_id = "code-assistant"
+        mock_container.last_active = datetime.now(timezone.utc)
+
+        mock_container_manager.create_agent_container_from_config = AsyncMock(
+            return_value=mock_container
+        )
+
+        config = AgentConfig(id="test", name="Test", allowed_tools=["Bash"])
+
+        # Create session
+        session_id, _ = await session_mgr.create_session_from_config(
+            conversation_id="conv-get",
+            api_key="sk-ant-key",
+            config=config
+        )
+
+        # Get session
+        container = await session_mgr.get_session(session_id)
+        assert container.agent_id == "test-agent"
+        assert container.config_id == "code-assistant"
+
+    @pytest.mark.asyncio
+    async def test_get_nonexistent_session_raises_error(self, session_mgr):
+        """Should raise SessionNotFoundError for non-existent session"""
+        with pytest.raises(SessionNotFoundError, match="Session conv-nonexistent not found"):
+            await session_mgr.get_session("conv-nonexistent")
+
+    @pytest.mark.asyncio
+    async def test_get_session_updates_last_active(self, session_mgr, mock_container_manager):
+        """Should update last_active when getting session"""
+        mock_container = Mock(spec=AgentContainer)
+        mock_container.agent_id = "test-agent"
+        mock_container.last_active = datetime.now(timezone.utc)
+
+        mock_container_manager.create_agent_container_from_config = AsyncMock(
+            return_value=mock_container
+        )
+
+        config = AgentConfig(id="test", name="Test", allowed_tools=["Bash"])
+
+        session_id, _ = await session_mgr.create_session_from_config(
+            conversation_id="conv-active",
+            api_key="sk-ant-key",
+            config=config
+        )
+
+        original_time = mock_container.last_active
+        await asyncio.sleep(0.1)
+
+        # Get session should update last_active
+        await session_mgr.get_session(session_id)
+        assert mock_container.last_active > original_time
+
+
+class TestListSessions:
+    """Test session listing"""
+
+    @pytest.mark.asyncio
+    async def test_list_empty_sessions(self, session_mgr):
+        """Should return empty dict when no sessions"""
+        sessions = session_mgr.list_sessions()
+        assert sessions == {}
+
+    @pytest.mark.asyncio
+    async def test_list_sessions(self, session_mgr, mock_container_manager):
+        """Should list all active sessions with metadata"""
+        # Create mock containers
+        container1 = Mock(spec=AgentContainer)
+        container1.agent_id = "agent-1"
+        container1.config_id = "config-1"
+        container1.container_ip = "172.18.0.2"
+        container1.created_at = datetime.now(timezone.utc)
+        container1.last_active = datetime.now(timezone.utc)
+
+        container2 = Mock(spec=AgentContainer)
+        container2.agent_id = "agent-2"
+        container2.config_id = "config-2"
+        container2.container_ip = "172.18.0.3"
+        container2.created_at = datetime.now(timezone.utc)
+        container2.last_active = datetime.now(timezone.utc)
+
+        mock_container_manager.create_agent_container_from_config = AsyncMock(
+            side_effect=[container1, container2]
+        )
+
+        config = AgentConfig(id="test", name="Test", allowed_tools=["Bash"])
+
+        # Create two sessions
+        await session_mgr.create_session_from_config("conv-1", "sk-ant-key", config=config)
+        await session_mgr.create_session_from_config("conv-2", "sk-ant-key", config=config)
+
+        # List sessions
+        sessions = session_mgr.list_sessions()
+
+        assert len(sessions) == 2
+        assert "conv-conv-1" in sessions
+        assert "conv-conv-2" in sessions
+
+        # Check metadata
+        session1 = sessions["conv-conv-1"]
+        assert session1["agent_id"] == "agent-1"
+        assert session1["config_id"] == "config-1"
+        assert session1["container_ip"] == "172.18.0.2"
+        assert "created_at" in session1
+        assert "last_active" in session1
+
+
+class TestCleanupSession:
+    """Test single session cleanup"""
+
+    @pytest.mark.asyncio
+    async def test_cleanup_specific_session(self, session_mgr, mock_container_manager):
+        """Should cleanup a specific session"""
+        mock_container = Mock(spec=AgentContainer)
+        mock_container.agent_id = "test-agent"
+        mock_container.last_active = datetime.now(timezone.utc)
+
+        mock_container_manager.create_agent_container_from_config = AsyncMock(
+            return_value=mock_container
+        )
+        mock_container_manager.stop_container = AsyncMock()
+
+        config = AgentConfig(id="test", name="Test", allowed_tools=["Bash"])
+
+        # Create session
+        session_id, _ = await session_mgr.create_session_from_config(
+            conversation_id="conv-cleanup",
+            api_key="sk-ant-key",
+            config=config
+        )
+
+        # Cleanup session
+        await session_mgr.cleanup_session(session_id)
+
+        # Session should be removed
+        assert session_id not in session_mgr.sessions
+        mock_container_manager.stop_container.assert_called_once_with("test-agent")
+
+    @pytest.mark.asyncio
+    async def test_cleanup_nonexistent_session(self, session_mgr, mock_container_manager):
+        """Should handle cleanup of non-existent session gracefully"""
+        mock_container_manager.stop_container = AsyncMock()
+
+        # Should not raise exception
+        await session_mgr.cleanup_session("conv-nonexistent")
+
+        # Should not call stop_container
+        mock_container_manager.stop_container.assert_not_called()

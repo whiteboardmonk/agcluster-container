@@ -77,10 +77,11 @@ async def health():
 
 
 # Import and include routers
-from agcluster.container.api import chat_completions, agents
+from agcluster.container.api import chat_completions, agents, configs
 
 app.include_router(chat_completions.router)
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
+app.include_router(configs.router, prefix="/api/configs", tags=["configs"])
 
 
 if __name__ == "__main__":

@@ -8,8 +8,10 @@ import websockets
 import json
 from typing import Dict, Optional
 from datetime import datetime, timezone
+from pathlib import Path
 
 from agcluster.container.core.config import settings
+from agcluster.container.models.agent_config import AgentConfig
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +19,19 @@ logger = logging.getLogger(__name__)
 class AgentContainer:
     """Represents a Claude SDK agent container"""
 
-    def __init__(self, agent_id: str, container_id: str, container_ip: str):
+    def __init__(
+        self,
+        agent_id: str,
+        container_id: str,
+        container_ip: str,
+        config_id: Optional[str] = None,
+        config: Optional[AgentConfig] = None
+    ):
         self.agent_id = agent_id
         self.container_id = container_id
         self.container_ip = container_ip
+        self.config_id = config_id
+        self.config = config
         self.created_at = datetime.now(timezone.utc)
         self.last_active = datetime.now(timezone.utc)
 
@@ -75,18 +86,167 @@ class ContainerManager:
             self._docker_client = docker.from_env()
         return self._docker_client
 
+    def _prepare_config_mount(self, agent_id: str, config: AgentConfig) -> tuple[str, dict]:
+        """
+        Prepare config file and volume mount specification
+
+        Args:
+            agent_id: Agent ID
+            config: Agent configuration
+
+        Returns:
+            tuple: (config_file_path, volume_mount_dict)
+        """
+        # Create config directory
+        config_dir = Path("/tmp/agcluster/configs")
+        config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write config to file
+        config_path = config_dir / f"{agent_id}.json"
+        with open(config_path, 'w') as f:
+            json.dump(config.model_dump(), f, indent=2)
+
+        logger.debug(f"Config written to {config_path}")
+
+        # Prepare volume mount
+        volume_mount = {
+            str(config_path): {
+                'bind': '/config/agent-config.json',
+                'mode': 'ro'  # Read-only
+            }
+        }
+
+        return str(config_path), volume_mount
+
+    async def create_agent_container_from_config(
+        self,
+        api_key: str,
+        config: AgentConfig,
+        config_id: str
+    ) -> AgentContainer:
+        """
+        Create agent container from configuration
+
+        Args:
+            api_key: Anthropic API key
+            config: Agent configuration
+            config_id: Configuration ID (for tracking)
+
+        Returns:
+            AgentContainer instance
+        """
+        agent_id = f"agent-{uuid.uuid4().hex[:12]}"
+        container_name = f"agcluster-{agent_id}"
+
+        logger.info(f"Creating container for agent {agent_id} with config {config_id}")
+
+        try:
+            # Prepare config mount
+            config_path, config_mount = self._prepare_config_mount(agent_id, config)
+
+            # Prepare volumes (workspace + config)
+            volumes = {
+                f"agcluster-workspace-{agent_id}": {
+                    'bind': '/workspace',
+                    'mode': 'rw'
+                }
+            }
+            volumes.update(config_mount)
+
+            # Environment variables
+            env = {
+                "AGENT_ID": agent_id,
+                "ANTHROPIC_API_KEY": api_key,
+                "CONFIG_PATH": "/config/agent-config.json"
+            }
+
+            # Resource limits from config
+            cpu_quota = None
+            mem_limit = None
+            if config.resource_limits:
+                cpu_quota = config.resource_limits.cpu_quota
+                mem_limit = config.resource_limits.memory_limit
+
+            # Create container
+            container = self.docker_client.containers.run(
+                image=settings.agent_image,
+                name=container_name,
+                detach=True,
+
+                # Environment
+                environment=env,
+
+                # Network
+                network=settings.docker_network,
+
+                # Resource limits (from config or defaults)
+                mem_limit=mem_limit or settings.container_memory_limit,
+                cpu_quota=cpu_quota or settings.container_cpu_quota,
+
+                # Security
+                security_opt=["no-new-privileges"],
+                cap_drop=["ALL"],
+
+                # Volumes (workspace + config)
+                volumes=volumes,
+
+                # Labels
+                labels={
+                    "agcluster": "true",
+                    "agent_id": agent_id,
+                    "config_id": config_id
+                }
+            )
+
+            # Wait for container to be ready
+            await self._wait_for_ready(container)
+
+            # Get container IP
+            container.reload()
+            networks = container.attrs['NetworkSettings']['Networks']
+            if networks:
+                container_ip = list(networks.values())[0]['IPAddress']
+            else:
+                container_ip = container.attrs['NetworkSettings']['IPAddress']
+
+            # Create agent container object with config
+            agent_container = AgentContainer(
+                agent_id=agent_id,
+                container_id=container.id,
+                container_ip=container_ip,
+                config_id=config_id,
+                config=config
+            )
+            self.active_containers[agent_id] = agent_container
+
+            logger.info(f"Container {container_name} created successfully at {container_ip}")
+
+            return agent_container
+
+        except docker.errors.ImageNotFound:
+            logger.error(f"Docker image {settings.agent_image} not found")
+            raise ValueError(f"Agent image not found: {settings.agent_image}")
+        except docker.errors.APIError as e:
+            logger.error(f"Docker API error creating container: {e}")
+            raise RuntimeError(f"Failed to create container: {str(e)}")
+
     async def create_agent_container(
         self,
         api_key: str,
         system_prompt: Optional[str] = None,
         allowed_tools: Optional[str] = None
     ) -> AgentContainer:
-        """Create a new agent container"""
+        """
+        Create a new agent container (legacy method for backward compatibility)
+
+        Note: This method is maintained for backward compatibility.
+        New code should use create_agent_container_from_config()
+        """
 
         agent_id = str(uuid.uuid4())[:8]
         container_name = f"agcluster-{agent_id}"
 
-        logger.info(f"Creating container for agent {agent_id}")
+        logger.info(f"Creating container for agent {agent_id} (legacy mode)")
 
         try:
             # Prepare environment
@@ -106,7 +266,7 @@ class ContainerManager:
                 # Environment
                 environment=env,
 
-                # Network - use 'network' parameter for custom networks
+                # Network
                 network=settings.docker_network,
 
                 # Resource limits
@@ -135,15 +295,12 @@ class ContainerManager:
             # Wait for container to be ready
             await self._wait_for_ready(container)
 
-            # Get container IP (from custom network)
+            # Get container IP
             container.reload()
-            # For custom networks, IP is in Networks section
             networks = container.attrs['NetworkSettings']['Networks']
             if networks:
-                # Get IP from the first network
                 container_ip = list(networks.values())[0]['IPAddress']
             else:
-                # Fallback to default bridge network IP
                 container_ip = container.attrs['NetworkSettings']['IPAddress']
 
             # Create agent container object

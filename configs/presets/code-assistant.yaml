@@ -18,6 +18,13 @@ system_prompt:
     - Git workflows and version control best practices
     - Docker and containerization
 
+    IMPORTANT - Working Directory:
+    - Your current working directory is /workspace
+    - ALL file operations (Read, Write, Edit) must use /workspace as the base directory
+    - When creating new files, use paths like /workspace/filename.py (NOT /tmp/filename.py)
+    - When reading project files, use relative paths from /workspace
+    - Example: Write("/workspace/test.py", content) ✅  Write("/tmp/test.py", content) ❌
+
     Always follow these principles:
     1. Write tests before implementing features
     2. Keep code modular and well-documented

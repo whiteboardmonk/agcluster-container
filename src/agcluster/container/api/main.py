@@ -47,13 +47,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS middleware
+# CORS middleware - configured with specific allowed origins for security
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=settings.allowed_origins,  # Whitelist specific origins only
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE"],  # Specific methods only
+    allow_headers=["Content-Type", "Authorization", "X-Session-ID", "X-Conversation-ID"],
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 
@@ -77,11 +78,18 @@ async def health():
 
 
 # Import and include routers
-from agcluster.container.api import chat_completions, agents, configs
+from agcluster.container.api import agent_chat, agents, configs, tools, files
 
-app.include_router(chat_completions.router)
+# Claude-native chat endpoint (replaces OpenAI /chat/completions)
+app.include_router(agent_chat.router, prefix="/api/agents", tags=["agents"])
+
+# Agent management endpoints
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(configs.router, prefix="/api/configs", tags=["configs"])
+
+# Tool and file endpoints
+app.include_router(tools.router, tags=["tools"])
+app.include_router(files.router, tags=["files"])
 
 
 if __name__ == "__main__":

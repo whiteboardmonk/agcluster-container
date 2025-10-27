@@ -1,68 +1,60 @@
-"""Docker container lifecycle management for Claude agents"""
+"""Container lifecycle management using provider abstraction"""
 
-import docker
 import logging
 import uuid
-import asyncio
-import websockets
-import json
-from typing import Dict, Optional
+from typing import Dict, Optional, AsyncIterator
 from datetime import datetime, timezone
-from pathlib import Path
 
 from agcluster.container.core.config import settings
+from agcluster.container.core.providers import ProviderFactory, ProviderConfig, ContainerInfo
 from agcluster.container.models.agent_config import AgentConfig
 
 logger = logging.getLogger(__name__)
 
 
 class AgentContainer:
-    """Represents a Claude SDK agent container"""
+    """
+    Wrapper around ContainerInfo for backward compatibility.
 
-    def __init__(
-        self,
-        agent_id: str,
-        container_id: str,
-        container_ip: str,
-        config_id: Optional[str] = None,
-        config: Optional[AgentConfig] = None
-    ):
-        self.agent_id = agent_id
-        self.container_id = container_id
-        self.container_ip = container_ip
+    This class maintains the same interface as the old AgentContainer
+    while using the new provider-based ContainerInfo internally.
+    """
+
+    def __init__(self, container_info: ContainerInfo, config_id: Optional[str] = None, config: Optional[AgentConfig] = None):
+        self.container_info = container_info
+        self.agent_id = container_info.metadata.get("agent_id", container_info.container_id[:12])
+        self.container_id = container_info.container_id
+        self.container_ip = container_info.metadata.get("container_ip", "")
         self.config_id = config_id
         self.config = config
         self.created_at = datetime.now(timezone.utc)
         self.last_active = datetime.now(timezone.utc)
 
-    async def query(self, message: str):
-        """Send query to Claude SDK via WebSocket and yield responses"""
-        ws_url = f"ws://{self.container_ip}:8765"
+    async def query(self, message: str) -> AsyncIterator:
+        """
+        Send query to agent via provider and yield responses.
+
+        This method delegates to the provider's execute_query method.
+        The actual provider is obtained from the global container manager.
+        """
+        # Get the provider from the container manager
+        from agcluster.container.core.container_manager import container_manager
 
         try:
-            async with websockets.connect(
-                ws_url,
-                ping_interval=20,
-                ping_timeout=10,
-                open_timeout=30
-            ) as ws:
-                # Send query
-                await ws.send(json.dumps({
-                    "type": "query",
-                    "content": message
-                }))
+            async for response in container_manager.provider.execute_query(
+                self.container_info,
+                message,
+                []  # Conversation history (TODO: maintain across calls if needed)
+            ):
+                # Update last active
+                self.last_active = datetime.now(timezone.utc)
 
-                # Stream responses
-                async for response in ws:
-                    data = json.loads(response)
-                    yield data
+                # Yield the response
+                yield response
 
-                    # Update last active
-                    self.last_active = datetime.now(timezone.utc)
-
-                    # Stop if complete
-                    if data.get("type") in ["complete", "error"]:
-                        break
+                # Stop if complete or error
+                if response.get("type") in ["complete", "error"]:
+                    break
 
         except Exception as e:
             logger.error(f"Error querying container {self.agent_id}: {e}")
@@ -73,50 +65,69 @@ class AgentContainer:
 
 
 class ContainerManager:
-    """Manages Docker containers for Claude agents"""
+    """
+    Manages containers using provider abstraction.
 
-    def __init__(self):
-        self._docker_client = None
-        self.active_containers: Dict[str, AgentContainer] = {}
+    This refactored version uses the ProviderFactory to support multiple
+    container platforms (Docker, Fly, Cloudflare, Vercel) while maintaining
+    the same external API for backward compatibility.
+    """
 
-    @property
-    def docker_client(self):
-        """Lazy initialization of Docker client"""
-        if self._docker_client is None:
-            self._docker_client = docker.from_env()
-        return self._docker_client
-
-    def _prepare_config_mount(self, agent_id: str, config: AgentConfig) -> tuple[str, dict]:
+    def __init__(self, provider_name: Optional[str] = None):
         """
-        Prepare config file and volume mount specification
+        Initialize container manager with specified provider.
 
         Args:
-            agent_id: Agent ID
-            config: Agent configuration
-
-        Returns:
-            tuple: (config_file_path, volume_mount_dict)
+            provider_name: Provider to use (docker, fly_machines, etc.)
+                          If None, uses settings.container_provider
         """
-        # Create config directory
-        config_dir = Path("/tmp/agcluster/configs")
-        config_dir.mkdir(parents=True, exist_ok=True)
+        provider_name = provider_name or settings.container_provider
 
-        # Write config to file
-        config_path = config_dir / f"{agent_id}.json"
-        with open(config_path, 'w') as f:
-            json.dump(config.model_dump(), f, indent=2)
+        # Create provider based on name
+        try:
+            if provider_name == "docker":
+                self.provider = ProviderFactory.create_provider(
+                    "docker",
+                    network_name=settings.docker_network
+                )
+            elif provider_name == "fly_machines":
+                # TODO: Implement when FlyProvider is ready
+                logger.warning("Fly Machines provider not yet implemented, falling back to Docker")
+                self.provider = ProviderFactory.create_provider(
+                    "docker",
+                    network_name=settings.docker_network
+                )
+            elif provider_name == "cloudflare":
+                # TODO: Implement when CloudflareProvider is ready
+                logger.warning("Cloudflare provider not yet implemented, falling back to Docker")
+                self.provider = ProviderFactory.create_provider(
+                    "docker",
+                    network_name=settings.docker_network
+                )
+            elif provider_name == "vercel":
+                # TODO: Implement when VercelProvider is ready
+                logger.warning("Vercel provider not yet implemented, falling back to Docker")
+                self.provider = ProviderFactory.create_provider(
+                    "docker",
+                    network_name=settings.docker_network
+                )
+            else:
+                logger.warning(f"Unknown provider {provider_name}, using docker")
+                self.provider = ProviderFactory.create_provider(
+                    "docker",
+                    network_name=settings.docker_network
+                )
+        except Exception as e:
+            logger.error(f"Error creating provider {provider_name}: {e}, falling back to docker")
+            self.provider = ProviderFactory.create_provider(
+                "docker",
+                network_name=settings.docker_network
+            )
 
-        logger.debug(f"Config written to {config_path}")
+        self.provider_name = provider_name
+        self.active_containers: Dict[str, AgentContainer] = {}
 
-        # Prepare volume mount
-        volume_mount = {
-            str(config_path): {
-                'bind': '/config/agent-config.json',
-                'mode': 'ro'  # Read-only
-            }
-        }
-
-        return str(config_path), volume_mount
+        logger.info(f"ContainerManager initialized with {self.provider.__class__.__name__}")
 
     async def create_agent_container_from_config(
         self,
@@ -125,7 +136,7 @@ class ContainerManager:
         config_id: str
     ) -> AgentContainer:
         """
-        Create agent container from configuration
+        Create agent container from configuration using provider.
 
         Args:
             api_key: Anthropic API key
@@ -135,100 +146,40 @@ class ContainerManager:
         Returns:
             AgentContainer instance
         """
-        agent_id = f"agent-{uuid.uuid4().hex[:12]}"
-        container_name = f"agcluster-{agent_id}"
+        session_id = f"session-{uuid.uuid4().hex[:12]}"
 
-        logger.info(f"Creating container for agent {agent_id} with config {config_id}")
+        logger.info(f"Creating container for session {session_id} with config {config_id}")
 
-        try:
-            # Prepare config mount
-            config_path, config_mount = self._prepare_config_mount(agent_id, config)
+        # Build provider config
+        provider_config = ProviderConfig(
+            platform=self.provider_name,
+            cpu_quota=config.resource_limits.cpu_quota if config.resource_limits else settings.container_cpu_quota,
+            memory_limit=config.resource_limits.memory_limit if config.resource_limits else settings.container_memory_limit,
+            storage_limit=config.resource_limits.storage_limit if config.resource_limits else settings.container_storage_limit,
+            allowed_tools=config.allowed_tools,
+            system_prompt=config.system_prompt,
+            max_turns=config.max_turns,
+            api_key=api_key,
+            platform_credentials={}  # TODO: Add platform-specific creds when needed
+        )
 
-            # Prepare volumes (workspace + config)
-            volumes = {
-                f"agcluster-workspace-{agent_id}": {
-                    'bind': '/workspace',
-                    'mode': 'rw'
-                }
-            }
-            volumes.update(config_mount)
+        # Create container via provider
+        container_info = await self.provider.create_container(session_id, provider_config)
 
-            # Environment variables
-            env = {
-                "AGENT_ID": agent_id,
-                "ANTHROPIC_API_KEY": api_key,
-                "CONFIG_PATH": "/config/agent-config.json"
-            }
+        # Wrap in AgentContainer for backward compatibility
+        agent_container = AgentContainer(
+            container_info=container_info,
+            config_id=config_id,
+            config=config
+        )
 
-            # Resource limits from config
-            cpu_quota = None
-            mem_limit = None
-            if config.resource_limits:
-                cpu_quota = config.resource_limits.cpu_quota
-                mem_limit = config.resource_limits.memory_limit
+        # Store in active containers
+        agent_id = agent_container.agent_id
+        self.active_containers[agent_id] = agent_container
 
-            # Create container
-            container = self.docker_client.containers.run(
-                image=settings.agent_image,
-                name=container_name,
-                detach=True,
+        logger.info(f"Container created successfully: {agent_id} at {container_info.endpoint_url}")
 
-                # Environment
-                environment=env,
-
-                # Network
-                network=settings.docker_network,
-
-                # Resource limits (from config or defaults)
-                mem_limit=mem_limit or settings.container_memory_limit,
-                cpu_quota=cpu_quota or settings.container_cpu_quota,
-
-                # Security
-                security_opt=["no-new-privileges"],
-                cap_drop=["ALL"],
-
-                # Volumes (workspace + config)
-                volumes=volumes,
-
-                # Labels
-                labels={
-                    "agcluster": "true",
-                    "agent_id": agent_id,
-                    "config_id": config_id
-                }
-            )
-
-            # Wait for container to be ready
-            await self._wait_for_ready(container)
-
-            # Get container IP
-            container.reload()
-            networks = container.attrs['NetworkSettings']['Networks']
-            if networks:
-                container_ip = list(networks.values())[0]['IPAddress']
-            else:
-                container_ip = container.attrs['NetworkSettings']['IPAddress']
-
-            # Create agent container object with config
-            agent_container = AgentContainer(
-                agent_id=agent_id,
-                container_id=container.id,
-                container_ip=container_ip,
-                config_id=config_id,
-                config=config
-            )
-            self.active_containers[agent_id] = agent_container
-
-            logger.info(f"Container {container_name} created successfully at {container_ip}")
-
-            return agent_container
-
-        except docker.errors.ImageNotFound:
-            logger.error(f"Docker image {settings.agent_image} not found")
-            raise ValueError(f"Agent image not found: {settings.agent_image}")
-        except docker.errors.APIError as e:
-            logger.error(f"Docker API error creating container: {e}")
-            raise RuntimeError(f"Failed to create container: {str(e)}")
+        return agent_container
 
     async def create_agent_container(
         self,
@@ -237,139 +188,57 @@ class ContainerManager:
         allowed_tools: Optional[str] = None
     ) -> AgentContainer:
         """
-        Create a new agent container (legacy method for backward compatibility)
+        Create a new agent container (legacy method for backward compatibility).
 
-        Note: This method is maintained for backward compatibility.
-        New code should use create_agent_container_from_config()
+        This method is maintained for backward compatibility with existing code.
+        New code should use create_agent_container_from_config().
+
+        Args:
+            api_key: Anthropic API key
+            system_prompt: System prompt for the agent
+            allowed_tools: Comma-separated list of allowed tools
+
+        Returns:
+            AgentContainer instance
         """
+        session_id = f"session-{uuid.uuid4().hex[:12]}"
 
-        agent_id = str(uuid.uuid4())[:8]
-        container_name = f"agcluster-{agent_id}"
+        logger.info(f"Creating container for session {session_id} (legacy mode)")
 
-        logger.info(f"Creating container for agent {agent_id} (legacy mode)")
+        # Build provider config from legacy params
+        provider_config = ProviderConfig(
+            platform=self.provider_name,
+            cpu_quota=settings.container_cpu_quota,
+            memory_limit=settings.container_memory_limit,
+            storage_limit=settings.container_storage_limit,
+            allowed_tools=(allowed_tools or settings.default_allowed_tools).split(","),
+            system_prompt=system_prompt or settings.default_system_prompt,
+            max_turns=100,  # Default
+            api_key=api_key,
+            platform_credentials={}
+        )
 
-        try:
-            # Prepare environment
-            env = {
-                "AGENT_ID": agent_id,
-                "ANTHROPIC_API_KEY": api_key,
-                "SYSTEM_PROMPT": system_prompt or settings.default_system_prompt,
-                "ALLOWED_TOOLS": allowed_tools or settings.default_allowed_tools
-            }
+        # Create container via provider
+        container_info = await self.provider.create_container(session_id, provider_config)
 
-            # Create container
-            container = self.docker_client.containers.run(
-                image=settings.agent_image,
-                name=container_name,
-                detach=True,
+        # Wrap in AgentContainer
+        agent_container = AgentContainer(container_info=container_info)
 
-                # Environment
-                environment=env,
+        # Store in active containers
+        agent_id = agent_container.agent_id
+        self.active_containers[agent_id] = agent_container
 
-                # Network
-                network=settings.docker_network,
+        logger.info(f"Container created successfully: {agent_id}")
 
-                # Resource limits
-                mem_limit=settings.container_memory_limit,
-                cpu_quota=settings.container_cpu_quota,
-
-                # Security
-                security_opt=["no-new-privileges"],
-                cap_drop=["ALL"],
-
-                # Volume for workspace
-                volumes={
-                    f"agcluster-workspace-{agent_id}": {
-                        'bind': '/workspace',
-                        'mode': 'rw'
-                    }
-                },
-
-                # Labels
-                labels={
-                    "agcluster": "true",
-                    "agent_id": agent_id
-                }
-            )
-
-            # Wait for container to be ready
-            await self._wait_for_ready(container)
-
-            # Get container IP
-            container.reload()
-            networks = container.attrs['NetworkSettings']['Networks']
-            if networks:
-                container_ip = list(networks.values())[0]['IPAddress']
-            else:
-                container_ip = container.attrs['NetworkSettings']['IPAddress']
-
-            # Create agent container object
-            agent_container = AgentContainer(agent_id, container.id, container_ip)
-            self.active_containers[agent_id] = agent_container
-
-            logger.info(f"Container {container_name} created successfully at {container_ip}")
-
-            return agent_container
-
-        except docker.errors.ImageNotFound:
-            logger.error(f"Docker image {settings.agent_image} not found")
-            raise ValueError(f"Agent image not found: {settings.agent_image}")
-        except docker.errors.APIError as e:
-            logger.error(f"Docker API error creating container: {e}")
-            raise RuntimeError(f"Failed to create container: {str(e)}")
-
-    async def _wait_for_ready(self, container, timeout: int = 30):
-        """Wait for container to be ready with adaptive WebSocket check"""
-        start_time = datetime.now(timezone.utc)
-        container_ip = None
-
-        while (datetime.now(timezone.utc) - start_time).total_seconds() < timeout:
-            try:
-                # Reload container info
-                container.reload()
-
-                # Check if container is running
-                if container.status != "running":
-                    await asyncio.sleep(0.5)
-                    continue
-
-                # Get container IP (from custom network)
-                networks = container.attrs['NetworkSettings']['Networks']
-                if networks:
-                    container_ip = list(networks.values())[0]['IPAddress']
-                else:
-                    container_ip = container.attrs['NetworkSettings']['IPAddress']
-
-                if not container_ip:
-                    await asyncio.sleep(0.5)
-                    continue
-
-                # Try to connect to WebSocket to verify server is ready
-                try:
-                    logger.debug(f"Container {container.name} at {container_ip}, checking WebSocket...")
-                    async with websockets.connect(
-                        f"ws://{container_ip}:8765",
-                        open_timeout=2,
-                        close_timeout=1
-                    ) as ws:
-                        # Connection successful - server is ready!
-                        logger.info(f"Container {container.name} WebSocket ready at {container_ip}")
-                        return
-                except (OSError, websockets.exceptions.WebSocketException) as e:
-                    # Server not ready yet, keep waiting
-                    logger.debug(f"WebSocket not ready yet: {e}")
-                    await asyncio.sleep(0.5)
-                    continue
-
-            except Exception as e:
-                logger.debug(f"Waiting for container: {e}")
-
-            await asyncio.sleep(0.5)
-
-        raise TimeoutError(f"Container did not become ready within {timeout}s")
+        return agent_container
 
     async def stop_container(self, agent_id: str):
-        """Stop and remove a container"""
+        """
+        Stop and remove a container.
+
+        Args:
+            agent_id: Agent ID to stop
+        """
         if agent_id not in self.active_containers:
             logger.warning(f"Agent {agent_id} not found in active containers")
             return
@@ -377,28 +246,60 @@ class ContainerManager:
         agent_container = self.active_containers[agent_id]
 
         try:
-            container = self.docker_client.containers.get(agent_container.container_id)
             logger.info(f"Stopping container for agent {agent_id}")
 
-            container.stop(timeout=10)
-            container.remove()
+            # Stop via provider
+            await self.provider.stop_container(agent_container.container_id)
 
-            logger.info(f"Container for agent {agent_id} removed")
+            logger.info(f"Container for agent {agent_id} stopped")
 
-        except docker.errors.NotFound:
-            logger.warning(f"Container {agent_container.container_id} not found")
         except Exception as e:
             logger.error(f"Error stopping container for agent {agent_id}: {e}")
         finally:
+            # Remove from active containers
             del self.active_containers[agent_id]
 
     def get_container(self, agent_id: str) -> Optional[AgentContainer]:
-        """Get container by agent ID"""
+        """
+        Get container by agent ID.
+
+        Args:
+            agent_id: Agent ID
+
+        Returns:
+            AgentContainer instance or None
+        """
         return self.active_containers.get(agent_id)
 
     def list_containers(self):
-        """List all active containers"""
+        """
+        List all active containers.
+
+        Returns:
+            List of AgentContainer instances
+        """
         return list(self.active_containers.values())
+
+    async def cleanup(self):
+        """
+        Cleanup all active containers and provider resources.
+        """
+        logger.info(f"Cleaning up container manager ({len(self.active_containers)} active)")
+
+        # Stop all active containers
+        for agent_id in list(self.active_containers.keys()):
+            try:
+                await self.stop_container(agent_id)
+            except Exception as e:
+                logger.error(f"Error stopping container {agent_id} during cleanup: {e}")
+
+        # Cleanup provider
+        try:
+            await self.provider.cleanup()
+        except Exception as e:
+            logger.error(f"Error cleaning up provider: {e}")
+
+        logger.info("Container manager cleanup complete")
 
 
 # Global container manager instance

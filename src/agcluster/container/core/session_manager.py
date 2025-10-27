@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import hashlib
-import uuid
+import secrets
 from typing import Dict, Optional
 from datetime import datetime, timezone, timedelta
 
@@ -35,10 +35,10 @@ class SessionManager:
 
     def _generate_session_id(self, conversation_id: Optional[str], api_key: str) -> str:
         """
-        Generate a unique session ID
+        Generate a unique session ID (legacy method for backward compatibility)
 
         Args:
-            conversation_id: Conversation ID from LibreChat (if available)
+            conversation_id: External conversation ID (if available)
             api_key: User's API key
 
         Returns:
@@ -58,7 +58,8 @@ class SessionManager:
         conversation_id: str,
         api_key: str,
         config_id: Optional[str] = None,
-        config: Optional[AgentConfig] = None
+        config: Optional[AgentConfig] = None,
+        provider: Optional[str] = None
     ) -> tuple[str, AgentContainer]:
         """
         Create a new session from configuration
@@ -68,6 +69,7 @@ class SessionManager:
             api_key: Anthropic API key
             config_id: Optional config ID to load
             config: Optional inline config
+            provider: Optional provider name (docker, fly_machines, cloudflare, vercel)
 
         Returns:
             tuple: (session_id, AgentContainer)
@@ -81,27 +83,42 @@ class SessionManager:
             config = load_config_from_id(config_id)
             effective_config_id = config_id
         elif config:
-            # Inline config - generate ID
-            effective_config_id = f"inline-{uuid.uuid4().hex[:8]}"
+            # Inline config - generate secure ID
+            effective_config_id = f"inline-{secrets.token_urlsafe(8)}"
             logger.info(f"Using inline config with ID {effective_config_id}")
         else:
             raise ValueError("Either config_id or config must be provided")
 
-        # Generate session ID
-        session_id = f"conv-{conversation_id}"
+        # Generate cryptographically secure session ID
+        # Use provided conversation_id if available, otherwise generate secure random ID
+        if conversation_id:
+            session_id = f"conv-{conversation_id}"
+        else:
+            session_id = f"conv-{secrets.token_urlsafe(32)}"
 
         # Check if session already exists
         if session_id in self.sessions:
             logger.warning(f"Session {session_id} already exists, will be replaced")
             await self.cleanup_session(session_id)
 
-        # Create container with config
-        logger.info(f"Creating session {session_id} with config {effective_config_id}")
-        agent_container = await container_manager.create_agent_container_from_config(
-            api_key=api_key,
-            config=config,
-            config_id=effective_config_id
-        )
+        # Use provider-specific container manager if provider specified
+        if provider:
+            from agcluster.container.core.container_manager import ContainerManager
+            logger.info(f"Creating session {session_id} with provider {provider}")
+            provider_manager = ContainerManager(provider_name=provider)
+            agent_container = await provider_manager.create_agent_container_from_config(
+                api_key=api_key,
+                config=config,
+                config_id=effective_config_id
+            )
+        else:
+            # Use global container manager (default provider)
+            logger.info(f"Creating session {session_id} with config {effective_config_id}")
+            agent_container = await container_manager.create_agent_container_from_config(
+                api_key=api_key,
+                config=config,
+                config_id=effective_config_id
+            )
 
         # Store session
         self.sessions[session_id] = agent_container
@@ -184,7 +201,7 @@ class SessionManager:
         New code should use create_session_from_config()
 
         Args:
-            conversation_id: Conversation ID from LibreChat
+            conversation_id: External conversation ID
             api_key: Anthropic API key
             system_prompt: Optional system prompt
             allowed_tools: Optional allowed tools

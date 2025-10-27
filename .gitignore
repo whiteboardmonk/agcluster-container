@@ -40,6 +40,9 @@ env/
 .env
 .env.local
 .env.*.local
+.env.docker
+.env.prod
+.env.staging
 
 # Testing
 .pytest_cache/
@@ -47,12 +50,24 @@ env/
 htmlcov/
 .tox/
 
+# Playwright E2E Testing
+playwright-report/
+test-results/
+
 # Logs
 *.log
 logs/
 
+# Node.js / Next.js
+node_modules/
+.next/
+.turbo/
+*.tsbuildinfo
+
 # Docker volumes
 volumes/
 
-# Development documentation (Claude Code specific)
-CLAUDE.md
+# Development temp files
+*.tmp
+*.bak
+.workspace/

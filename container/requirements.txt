@@ -2,8 +2,10 @@
 claude-agent-sdk>=0.1.0
 anthropic>=0.40.0
 
-# WebSocket server
-websockets>=12.0
+# FastAPI server with SSE
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.5.0
 
 # Data science libraries (optional, can be extended)
 pandas>=2.1.0

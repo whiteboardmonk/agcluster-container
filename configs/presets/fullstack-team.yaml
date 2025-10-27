@@ -14,6 +14,11 @@ system_prompt:
   append: |
     You are the lead developer coordinating a team of specialists.
 
+    IMPORTANT - Working Directory:
+    - The project workspace is /workspace
+    - All file operations by you and your team must use /workspace
+    - Ensure sub-agents work in /workspace when delegating tasks
+
     Your team consists of:
     - Frontend Developer: React, Next.js, Tailwind CSS, UI/UX
     - Backend Developer: Python, FastAPI, databases, APIs
@@ -43,6 +48,12 @@ agents:
       - State management (React Context, Zustand)
       - Component testing with Vitest and React Testing Library
 
+      IMPORTANT - Working Directory:
+      - Work in /workspace directory for all file operations
+      - Save components to /workspace/src/components/
+      - Save tests to /workspace/tests/ or /workspace/__tests__/
+      - Example: Write("/workspace/src/components/Button.tsx", content) ✅
+
       Focus on:
       - Clean, reusable component architecture
       - Responsive design and accessibility
@@ -68,6 +79,12 @@ agents:
       - Authentication and authorization
       - Testing with pytest
 
+      IMPORTANT - Working Directory:
+      - Work in /workspace directory for all file operations
+      - Save API code to /workspace/src/api/
+      - Save tests to /workspace/tests/
+      - Example: Write("/workspace/src/api/routes.py", content) ✅
+
       Focus on:
       - Clean API design following REST principles
       - Proper error handling and validation
@@ -92,6 +109,12 @@ agents:
       - Container orchestration (Kubernetes basics)
       - Infrastructure as Code
       - Monitoring and logging
+
+      IMPORTANT - Working Directory:
+      - Work in /workspace directory for all file operations
+      - Save Dockerfiles to /workspace/docker/ or /workspace/
+      - Save CI/CD configs to /workspace/.github/workflows/
+      - Example: Write("/workspace/docker/Dockerfile", content) ✅
 
       Focus on:
       - Efficient Dockerfile creation

@@ -56,7 +56,7 @@ async def stream_to_openai_sse(
             data = message.get("data", {})
             msg_type = data.get("type")
 
-            # Only stream user-facing content
+            # Stream user-facing content
             if msg_type == "content":
                 content = data.get("content", "")
 
@@ -78,6 +78,27 @@ async def stream_to_openai_sse(
                     }
 
                     yield f"data: {json.dumps(chunk)}\n\n"
+
+            # Stream tool execution events for UI panels
+            # Use Vercel AI SDK's data stream protocol for custom data
+            elif msg_type in ["tool_start", "tool_use", "tool_complete", "thinking"]:
+                # Send as Vercel AI SDK data-tool part
+                # Format: data: {"type":"data-tool","data":{...}}
+                # The UI can process this through useChat's onToolCall or custom data handlers
+                data_part = {
+                    "type": "data-tool",
+                    "data": data
+                }
+                yield f"data: {json.dumps(data_part)}\n\n"
+
+            # Stream todo updates for task list panel
+            elif msg_type == "todo_update":
+                # Send as Vercel AI SDK data-todo part
+                data_part = {
+                    "type": "data-todo",
+                    "data": data
+                }
+                yield f"data: {json.dumps(data_part)}\n\n"
 
             # Skip metadata and system messages in streaming
             # They're filtered out - only user-facing content is streamed
@@ -168,3 +189,55 @@ def create_openai_completion_response(
         }],
         "usage": usage_data
     }
+
+
+async def stream_claude_events(
+    container_stream: AsyncIterator[Dict[str, Any]]
+) -> AsyncIterator[str]:
+    """
+    Stream Claude SDK events in their native format (for Edge route transformation)
+
+    This streams events directly from the container with minimal formatting,
+    allowing the Next.js Edge route to transform them into Vercel AI SDK format.
+
+    Args:
+        container_stream: Async iterator of messages from container
+
+    Yields:
+        SSE-formatted Claude events
+    """
+    async for message in container_stream:
+        message_type = message.get("type")
+
+        if message_type == "message":
+            # Extract data from message
+            data = message.get("data", {})
+            msg_type = data.get("type")
+
+            # Stream all message types with their data
+            event_data = {
+                "type": message_type,
+                "msg_type": msg_type,
+                "data": data
+            }
+            yield f"data: {json.dumps(event_data)}\n\n"
+
+        elif message_type == "complete":
+            # Send completion event
+            event_data = {
+                "type": "complete",
+                "status": message.get("status", "success")
+            }
+            yield f"data: {json.dumps(event_data)}\n\n"
+            yield "data: [DONE]\n\n"
+            break
+
+        elif message_type == "error":
+            # Send error event
+            event_data = {
+                "type": "error",
+                "message": message.get("message", "Unknown error")
+            }
+            yield f"data: {json.dumps(event_data)}\n\n"
+            yield "data: [DONE]\n\n"
+            break

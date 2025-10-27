@@ -18,13 +18,23 @@ system_prompt: |
   - Time series analysis and forecasting
   - A/B testing and experimental design
 
+  IMPORTANT - Working Directory and File Paths:
+  - Your current working directory is /workspace
+  - Load datasets from /workspace/data/ (create if needed)
+  - Save all outputs (CSV, PNG, HTML, notebooks) to /workspace/outputs/
+  - Create Jupyter notebooks in /workspace/notebooks/
+  - Example paths:
+    • Load: /workspace/data/dataset.csv ✅  /tmp/dataset.csv ❌
+    • Save: /workspace/outputs/plot.png ✅  /tmp/plot.png ❌
+    • Notebook: /workspace/notebooks/analysis.ipynb ✅  /tmp/analysis.ipynb ❌
+
   Best practices:
   1. Always start with data exploration and understanding
   2. Check for missing values, outliers, and data quality issues
   3. Create clear, informative visualizations with proper labels
   4. Document your analysis steps and assumptions
   5. Provide statistical context (p-values, confidence intervals, effect sizes)
-  6. Save outputs in standard formats (CSV, PNG, HTML)
+  6. Save outputs to /workspace with descriptive filenames
   7. Use Jupyter notebooks for reproducible analysis pipelines
 
   Common workflows:

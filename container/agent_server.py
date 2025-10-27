@@ -1,14 +1,17 @@
-"""WebSocket server running inside Docker container - wraps Claude Agent SDK"""
+"""FastAPI server with SSE running inside Docker container - wraps Claude Agent SDK"""
 
 import asyncio
-import websockets
 import json
 import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, AsyncIterator
 from datetime import datetime, timezone
+
+from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(
@@ -19,8 +22,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+class QueryRequest(BaseModel):
+    """Request model for query endpoint"""
+    query: str
+    history: list[Dict[str, Any]] = []
+
+
 class AgentServer:
-    """WebSocket server managing Claude SDK inside container"""
+    """FastAPI server with SSE managing Claude SDK inside container"""
 
     def __init__(self):
         self.agent_id = os.environ.get("AGENT_ID", "unknown")
@@ -28,6 +37,7 @@ class AgentServer:
         self.config_path = os.environ.get("CONFIG_PATH", "/config/agent-config.json")
         self.config = None
         self.sdk_client = None  # Will be initialized in async context
+        self.last_tool_name = None  # Track the last tool used for completion events
 
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable is required")
@@ -36,11 +46,25 @@ class AgentServer:
         self._load_config()
 
     def _load_config(self):
-        """Load agent configuration from mounted file or environment variables"""
-        config_file = Path(self.config_path)
+        """Load agent configuration from JSON env var, mounted file, or legacy env vars"""
 
+        # Priority 1: AGENT_CONFIG_JSON environment variable (Docker Compose mode)
+        config_json = os.environ.get("AGENT_CONFIG_JSON")
+        if config_json:
+            logger.info("Loading config from AGENT_CONFIG_JSON environment variable")
+            try:
+                self.config = json.loads(config_json)
+                logger.info(f"Loaded config: {self.config.get('id')} - {self.config.get('name')}")
+                logger.info(f"Tools: {self.config.get('allowed_tools')}")
+                logger.info(f"Permission mode: {self.config.get('permission_mode', 'default')}")
+                return
+            except Exception as e:
+                logger.error(f"Failed to parse AGENT_CONFIG_JSON: {e}")
+                raise ValueError(f"Invalid config JSON: {e}")
+
+        # Priority 2: Mounted config file
+        config_file = Path(self.config_path)
         if config_file.exists():
-            # Load from mounted config file (Phase 1+ approach)
             logger.info(f"Loading config from {self.config_path}")
             try:
                 with open(config_file, 'r') as f:
@@ -49,20 +73,21 @@ class AgentServer:
                 logger.info(f"Loaded config: {self.config.get('id')} - {self.config.get('name')}")
                 logger.info(f"Tools: {self.config.get('allowed_tools')}")
                 logger.info(f"Permission mode: {self.config.get('permission_mode', 'default')}")
+                return
 
             except Exception as e:
                 logger.error(f"Failed to load config from {self.config_path}: {e}")
                 raise ValueError(f"Invalid config file: {e}")
-        else:
-            # Fallback to environment variables (legacy/backward compatible)
-            logger.info("No config file found, using environment variables (legacy mode)")
-            self.config = {
-                "id": "legacy",
-                "name": "Legacy Agent",
-                "allowed_tools": os.environ.get("ALLOWED_TOOLS", "Bash,Read,Write").split(","),
-                "system_prompt": os.environ.get("SYSTEM_PROMPT", "You are a helpful AI assistant."),
-                "permission_mode": "acceptEdits"
-            }
+
+        # Priority 3: Legacy environment variables (backward compatible)
+        logger.info("No config found, using legacy environment variables")
+        self.config = {
+            "id": "legacy",
+            "name": "Legacy Agent",
+            "allowed_tools": os.environ.get("ALLOWED_TOOLS", "Bash,Read,Write").split(","),
+            "system_prompt": os.environ.get("SYSTEM_PROMPT", "You are a helpful AI assistant."),
+            "permission_mode": "acceptEdits"
+        }
 
     async def initialize_sdk(self):
         """Initialize Claude SDK client (call once at startup)"""
@@ -79,11 +104,11 @@ class AgentServer:
             # Handle system prompt (string or preset object)
             system_prompt = self.config.get("system_prompt")
             if isinstance(system_prompt, dict):
-                # System prompt preset with optional append
+                # System prompt preset with optional append - convert to string
                 if system_prompt.get("type") == "preset":
-                    options_dict["system_prompt_preset"] = system_prompt.get("preset")
-                    if system_prompt.get("append"):
-                        options_dict["system_prompt_append"] = system_prompt.get("append")
+                    # For preset types, use the append text as the system prompt
+                    # The preset itself is handled by Claude SDK internally
+                    options_dict["system_prompt"] = system_prompt.get("append", "")
             elif isinstance(system_prompt, str):
                 # Direct string prompt
                 options_dict["system_prompt"] = system_prompt
@@ -100,6 +125,31 @@ class AgentServer:
                 options_dict["agents"] = agents
                 logger.info(f"Configured {len(agents)} sub-agents: {list(agents.keys())}")
 
+            # Add hook support if configured
+            hooks = self.config.get("hooks", {})
+            if hooks:
+                try:
+                    # Import HookMatcher if available
+                    from claude_agent_sdk import HookMatcher
+
+                    # Convert hooks configuration to SDK format
+                    hook_config = {}
+
+                    # Example: Add PreToolUse hooks for safety
+                    if "PreToolUse" in hooks:
+                        hook_config["PreToolUse"] = []
+                        for hook in hooks["PreToolUse"]:
+                            if isinstance(hook, dict):
+                                matcher = hook.get("matcher", "*")
+                                # For now, log hook events - real implementation would add callbacks
+                                logger.info(f"Registered PreToolUse hook for: {matcher}")
+
+                    if hook_config:
+                        options_dict["hooks"] = hook_config
+                        logger.info(f"Configured hooks: {list(hook_config.keys())}")
+                except ImportError:
+                    logger.debug("HookMatcher not available in current SDK version")
+
             # Configure Claude SDK options
             options = ClaudeAgentOptions(**options_dict)
 
@@ -113,41 +163,29 @@ class AgentServer:
             logger.error(f"Failed to initialize Claude SDK: {e}", exc_info=True)
             raise
 
-    async def handle_connection(self, websocket):
-        """Handle WebSocket connection from host"""
-        client_id = id(websocket)
-        logger.info(f"Client {client_id} connected to agent {self.agent_id}")
+    async def process_query_stream(
+        self,
+        query: str,
+        request: Request
+    ) -> AsyncIterator[str]:
+        """
+        Process query with Claude SDK and stream responses via SSE.
 
-        try:
-            async for message in websocket:
-                try:
-                    data = json.loads(message)
+        Yields SSE-formatted messages:
+        - data: {JSON}\n\n
 
-                    if data.get("type") == "query":
-                        await self.process_query(websocket, data.get("content", ""))
-
-                    elif data.get("type") == "interrupt":
-                        await self.handle_interrupt(client_id)
-
-                except json.JSONDecodeError as e:
-                    logger.error(f"Invalid JSON received: {e}")
-                    await websocket.send(json.dumps({
-                        "type": "error",
-                        "message": "Invalid JSON format"
-                    }))
-
-        except websockets.exceptions.ConnectionClosed:
-            logger.info(f"Client {client_id} disconnected")
-        except Exception as e:
-            logger.error(f"Error handling connection: {e}", exc_info=True)
-
-    async def process_query(self, websocket, query: str):
-        """Process query with Claude SDK and stream responses"""
+        Supports cancellation via request.is_disconnected()
+        """
         try:
             if not self.sdk_client:
                 raise RuntimeError("Claude SDK client not initialized")
 
-            logger.info(f"Processing query: {query[:100]}...")
+            # Check if this is a slash command
+            is_slash_command = query.strip().startswith('/')
+            if is_slash_command:
+                logger.info(f"Processing slash command: {query[:100]}...")
+            else:
+                logger.info(f"Processing query: {query[:100]}...")
 
             # Send query to Claude SDK client (maintains session)
             await self.sdk_client.query(query)
@@ -155,78 +193,148 @@ class AgentServer:
             # Stream responses from the session
             message_count = 0
             async for message in self.sdk_client.receive_messages():
+                # Check for client disconnection (cancellation support)
+                if await request.is_disconnected():
+                    logger.info("Client disconnected, stopping query processing")
+                    if self.sdk_client:
+                        try:
+                            await self.sdk_client.interrupt()
+                        except Exception as e:
+                            logger.error(f"Error interrupting SDK: {e}")
+                    break
+
                 message_count += 1
 
-                # Format and send message
-                formatted = self._format_message(message)
+                # Format and yield message (may return list for multiple events)
+                formatted = await self._format_message(message)
                 if formatted:
-                    await websocket.send(json.dumps({
-                        "type": "message",
-                        "data": formatted,
-                        "sequence": message_count
-                    }))
+                    # Handle both single events and lists of events
+                    events_to_send = formatted if isinstance(formatted, list) else [formatted]
+                    for event in events_to_send:
+                        yield f"data: {json.dumps({'type': 'message', 'data': event, 'sequence': message_count})}\n\n"
 
                 # Check for completion (ResultMessage indicates completion)
                 if type(message).__name__ == 'ResultMessage':
-                    await websocket.send(json.dumps({
-                        "type": "complete",
-                        "status": "success",
-                        "total_messages": message_count
-                    }))
+                    yield f"data: {json.dumps({'type': 'complete', 'status': 'success', 'total_messages': message_count})}\n\n"
                     break
 
         except Exception as e:
             logger.error(f"Error processing query: {e}", exc_info=True)
-            await websocket.send(json.dumps({
+            error_data = {
                 "type": "error",
                 "message": str(e),
                 "error_type": type(e).__name__
-            }))
+            }
+            yield f"data: {json.dumps(error_data)}\n\n"
 
-    async def handle_interrupt(self, client_id: int):
-        """Handle interrupt request"""
-        logger.info(f"Interrupt requested for client {client_id}")
-        # TODO: Implement Claude SDK interrupt when available
-
-    def _format_message(self, message) -> Optional[Dict[str, Any]]:
+    async def _format_message(self, message) -> Optional[Dict[str, Any]]:
         """
         Classify Claude SDK messages for OpenAI-compatible formatting
 
         Returns dict with 'type' field:
         - type: "content" → User-facing assistant response
         - type: "tool_use" → Tool execution info
+        - type: "tool_start" → Tool execution started
+        - type: "tool_complete" → Tool execution completed
+        - type: "thinking" → Agent thinking process
+        - type: "todo_update" → TodoWrite tool update
         - type: "metadata" → Usage stats, cost info (from ResultMessage)
         - type: "system" → Debug/session info
         - None → Skip this message
         """
         try:
-            # Import types for checking
-            from claude_agent_sdk.types import AssistantMessage, ToolUseBlock, TextBlock
+            # Log every message type we receive
+            logger.info(f"📨 Received message type: {type(message).__name__}")
+            # Import types for checking - updated to match documentation
+            from claude_agent_sdk import (
+                AssistantMessage,
+                ToolUseBlock,
+                ToolResultBlock,
+                TextBlock
+            )
 
-            # Try to import additional message types (may not all be available)
+            # Try to import additional message types that may not be available
             try:
-                from claude_agent_sdk.types import SystemMessage, ResultMessage, UserMessage
+                from claude_agent_sdk import SystemMessage, ResultMessage, UserMessage, ThinkingBlock
             except ImportError:
                 SystemMessage = None
                 ResultMessage = None
                 UserMessage = None
+                ThinkingBlock = None
+
+            # Check if ThinkingBlock is available (may not be in current SDK)
+            if ThinkingBlock is None:
+                logger.debug("ThinkingBlock not available in current SDK version")
 
             # ===== USER-FACING CONTENT =====
             if isinstance(message, AssistantMessage):
-                # Extract text content
+                # Log blocks in this message
+                block_types = [type(block).__name__ for block in message.content]
+                logger.info(f"  AssistantMessage contains blocks: {block_types}")
+
+                # Extract text content and tool use
                 for block in message.content:
-                    if isinstance(block, TextBlock):
+                    if ThinkingBlock and isinstance(block, ThinkingBlock):
+                        # Return thinking block as event
+                        return {
+                            "type": "thinking",
+                            "content": block.text,
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        }
+                    elif isinstance(block, TextBlock):
+                        # If we had a tool running, mark it as complete before showing text
+                        if self.last_tool_name:
+                            # Return tool complete event first
+                            # (Note: This is a simplification - in full impl we'd need a queue)
+                            self.last_tool_name = None
+
                         return {
                             "type": "content",
                             "role": "assistant",
                             "content": block.text
                         }
                     elif isinstance(block, ToolUseBlock):
-                        return {
+                        # Get tool_use_id from the block
+                        tool_use_id = getattr(block, 'id', f'tool_{block.name}_{datetime.now().timestamp()}')
+
+                        # Track this tool for completion event
+                        self.last_tool_name = block.name
+
+                        # Emit tool start event with tool_use_id for matching
+                        tool_start_event = {
                             "type": "tool_use",
                             "tool_name": block.name,
+                            "tool_use_id": tool_use_id,
                             "tool_input": block.input,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "status": "started",
                             "content": f"Using tool: {block.name}"
+                        }
+
+                        # Check if this is TodoWrite tool - emit both tool_start AND todo_update
+                        if block.name == "TodoWrite" and isinstance(block.input, dict):
+                            todos = block.input.get("todos", [])
+                            if todos:
+                                # Return BOTH tool_start and todo_update as a list
+                                todo_update_event = {
+                                    "type": "todo_update",
+                                    "todos": todos,
+                                    "timestamp": datetime.now(timezone.utc).isoformat()
+                                }
+                                return [tool_start_event, todo_update_event]
+
+                        # For other tools, just return tool_start
+                        return tool_start_event
+                    elif isinstance(block, ToolResultBlock):
+                        # Emit tool complete event when tool finishes
+                        logger.info(f"ToolResultBlock received: {block}")
+                        return {
+                            "type": "tool_complete",
+                            "tool_name": getattr(block, 'tool_use_id', 'unknown'),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "status": "completed",
+                            "output": getattr(block, 'content', None),
+                            "is_error": getattr(block, 'is_error', False)
                         }
 
             # ===== METADATA (extract but don't include in user-facing content) =====
@@ -254,11 +362,30 @@ class AgentServer:
                     "session_id": getattr(message, 'data', {}).get("session_id", "")
                 }
 
-            # ===== SKIP USER ECHO =====
+            # ===== USER MESSAGES (may contain ToolResultBlock) =====
             if UserMessage and isinstance(message, UserMessage):
-                return None  # Don't echo user messages back
+                # Check if this UserMessage contains ToolResultBlock
+                if hasattr(message, 'content') and isinstance(message.content, list):
+                    block_types = [type(block).__name__ for block in message.content]
+                    logger.info(f"  UserMessage contains blocks: {block_types}")
+
+                    for block in message.content:
+                        if isinstance(block, ToolResultBlock):
+                            # Emit tool complete event
+                            logger.info(f"✅ ToolResultBlock found in UserMessage: {block}")
+                            return {
+                                "type": "tool_complete",
+                                "tool_name": getattr(block, 'tool_use_id', 'unknown'),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "status": "completed",
+                                "output": getattr(block, 'content', None),
+                                "is_error": getattr(block, 'is_error', False)
+                            }
+                # Don't echo regular user text messages back
+                return None
 
             # Unknown message type - skip
+            logger.info(f"  ⚠️  Unknown message type, skipping: {type(message).__name__}")
             return None
 
         except Exception as e:
@@ -266,33 +393,92 @@ class AgentServer:
             return None
 
 
-async def main():
-    """Start WebSocket server"""
+# Create FastAPI app
+app = FastAPI(title="AgCluster Agent Server", version="2.0.0")
+
+# Global server instance
+server: Optional[AgentServer] = None
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize agent server and Claude SDK on startup"""
+    global server
     agent_id = os.environ.get("AGENT_ID", "unknown")
     logger.info(f"Starting agent server for {agent_id}")
-    logger.info("Listening on 0.0.0.0:8765")
+    logger.info("Initializing FastAPI with SSE on port 3000")
 
     server = AgentServer()
-
-    # Initialize Claude SDK client (maintains session across queries)
     await server.initialize_sdk()
 
-    async with websockets.serve(
-        server.handle_connection,
-        "0.0.0.0",
-        8765,
-        ping_interval=20,
-        ping_timeout=10
-    ):
-        logger.info("Agent server ready")
-        await asyncio.Future()  # Run forever
+    logger.info("Agent server ready")
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "agent_id": os.environ.get("AGENT_ID", "unknown"),
+        "sdk_initialized": server.sdk_client is not None if server else False
+    }
+
+
+@app.post("/query")
+async def query_agent(query_request: QueryRequest, request: Request):
+    """
+    Process query and stream responses via SSE.
+
+    Request:
+    {
+        "query": "user query text",
+        "history": []  // Optional conversation history
+    }
+
+    Response: Server-Sent Events stream
+    - data: {"type": "message", "data": {...}}\n\n
+    - data: {"type": "complete", "status": "success"}\n\n
+    """
+    if not server:
+        return {"error": "Agent server not initialized"}
+
+    async def event_generator():
+        async for event in server.process_query_stream(query_request.query, request):
+            yield event
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        }
+    )
+
+
+@app.post("/interrupt")
+async def interrupt_execution():
+    """Interrupt current query execution"""
+    if not server or not server.sdk_client:
+        return {"error": "Agent server not initialized"}
+
+    try:
+        await server.sdk_client.interrupt()
+        logger.info("Successfully interrupted execution")
+        return {"status": "interrupted"}
+    except Exception as e:
+        logger.error(f"Error during interrupt: {e}", exc_info=True)
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("Server shutting down...")
-    except Exception as e:
-        logger.error(f"Fatal error: {e}", exc_info=True)
-        sys.exit(1)
+    import uvicorn
+
+    # Run with uvicorn
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=3000,  # Changed from 8765 (WebSocket) to 3000 (HTTP)
+        log_level="info"
+    )

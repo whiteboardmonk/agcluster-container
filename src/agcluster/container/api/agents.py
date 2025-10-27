@@ -32,21 +32,7 @@ async def list_agents():
     return []
 
 
-@router.get("/{agent_id}", response_model=AgentInfo)
-async def get_agent(agent_id: str):
-    """Get agent information"""
-    # TODO: Implement agent info retrieval
-    raise HTTPException(status_code=404, detail="Agent not found")
-
-
-@router.delete("/{agent_id}")
-async def delete_agent(agent_id: str):
-    """Stop and remove an agent"""
-    # TODO: Implement agent deletion
-    raise HTTPException(status_code=501, detail="Not implemented yet")
-
-
-# New config-based endpoints
+# New config-based endpoints (MUST come before /{agent_id} catch-all)
 
 @router.post("/launch", response_model=LaunchResponse)
 async def launch_agent(request: LaunchRequest):
@@ -88,12 +74,13 @@ async def launch_agent(request: LaunchRequest):
         # Generate conversation ID (used as session key)
         conversation_id = str(uuid.uuid4())
 
-        # Create session from config
+        # Create session from config with optional provider
         session_id, agent_container = await session_manager.create_session_from_config(
             conversation_id=conversation_id,
             api_key=request.api_key,
             config_id=request.config_id,
-            config=request.config
+            config=request.config,
+            provider=request.provider
         )
 
         return LaunchResponse(
@@ -162,7 +149,7 @@ async def get_session(session_id: str):
             status="running",
             created_at=agent_container.created_at,
             last_active=agent_container.last_active,
-            config=agent_container.config
+            config=None  # Exclude config to avoid serialization issues
         )
 
     except SessionNotFoundError as e:
@@ -196,3 +183,58 @@ async def stop_session(session_id: str):
             "status": "success",
             "message": f"Session {session_id} stopped (or did not exist)"
         }
+
+
+@router.post("/sessions/{session_id}/interrupt")
+async def interrupt_session(session_id: str):
+    """
+    Send interrupt signal to agent execution
+
+    Args:
+        session_id: Session ID to interrupt
+
+    Returns:
+        Success message
+    """
+    try:
+        from agcluster.container.core.container_manager import container_manager
+        import websockets
+        import json
+
+        # Get session container
+        agent_container = await session_manager.get_session(session_id)
+
+        # Send interrupt message via HTTP (agent server now uses HTTP/SSE on port 3000)
+        import httpx
+        endpoint_url = agent_container.container_info.endpoint_url
+        interrupt_url = f"{endpoint_url}/interrupt"
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(interrupt_url, timeout=5.0)
+            response.raise_for_status()
+
+        return {
+            "status": "success",
+            "message": f"Interrupt signal sent to session {session_id}"
+        }
+
+    except SessionNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send interrupt: {str(e)}")
+
+
+# Generic catch-all routes (MUST come AFTER specific routes)
+
+@router.get("/{agent_id}", response_model=AgentInfo)
+async def get_agent(agent_id: str):
+    """Get agent information"""
+    # TODO: Implement agent info retrieval
+    raise HTTPException(status_code=404, detail="Agent not found")
+
+
+@router.delete("/{agent_id}")
+async def delete_agent(agent_id: str):
+    """Stop and remove an agent"""
+    # TODO: Implement agent deletion
+    raise HTTPException(status_code=501, detail="Not implemented yet")

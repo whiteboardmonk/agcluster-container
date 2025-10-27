@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #000;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-zinc-900/50 border border-gray-800;
+  }
+
+  .glass-hover {
+    @apply hover:bg-zinc-900/70 hover:border-gray-700 transition-all duration-300;
+  }
+
+  .gradient-text {
+    @apply text-white;
+  }
+
+  .glass-effect {
+    @apply bg-zinc-900/50 border border-gray-800;
+  }
+
+  .glow-card {
+    @apply relative overflow-hidden;
+  }
+
+  .glow-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .glow-card:hover::before {
+    opacity: 0;
+  }
+}
+
+/* Syntax highlighting for code blocks */
+.hljs {
+  @apply bg-gray-900 rounded-lg p-4 overflow-x-auto;
+}

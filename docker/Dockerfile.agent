@@ -19,9 +19,10 @@ RUN useradd -m -u 1000 agentuser && \
     mkdir -p /workspace /app && \
     chown -R agentuser:agentuser /workspace /app
 
-# Copy requirements and install Python dependencies
+# Copy requirements and install Python dependencies with cache mount
 COPY container/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt
 
 # Copy agent server
@@ -33,12 +34,15 @@ USER agentuser
 # Set working directory
 WORKDIR /workspace
 
-# Expose WebSocket port
-EXPOSE 8765
+# Expose HTTP/SSE port
+EXPOSE 3000
 
-# Health check - check if process is running instead of probing the port
+# Health check - check if HTTP endpoint is responding
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD pgrep -f "python /app/agent_server.py" || exit 1
+    CMD curl -f http://localhost:3000/health || exit 1
 
-# Start agent server
-CMD ["python", "/app/agent_server.py"]
+# Add /app to Python path so uvicorn can find agent_server.py
+ENV PYTHONPATH=/app
+
+# Start agent server with uvicorn
+CMD ["uvicorn", "agent_server:app", "--host", "0.0.0.0", "--port", "3000"]

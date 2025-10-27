@@ -10,11 +10,15 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements and package metadata
 COPY requirements.txt pyproject.toml ./
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with cache mount for faster rebuilds
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
+
+# Copy config files
+COPY configs/ ./configs/
 
 # Install package in development mode
 RUN pip install -e .

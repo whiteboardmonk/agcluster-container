@@ -99,6 +99,7 @@ class LaunchRequest(BaseModel):
     api_key: str = Field(..., description="Anthropic API key (BYOK)")
     config_id: Optional[str] = Field(None, description="ID of saved configuration to use")
     config: Optional[FullAgentConfig] = Field(None, description="Inline configuration")
+    provider: Optional[str] = Field(None, description="Container provider (docker, fly_machines, cloudflare, vercel)")
 
     def validate_config_or_id(self):
         """Ensure either config_id or config is provided"""

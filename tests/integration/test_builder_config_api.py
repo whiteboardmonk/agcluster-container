@@ -27,25 +27,21 @@ class TestBuilderConfigAPI:
             "allowed_tools": ["Bash", "Read", "Write"],
             "system_prompt": "You are a coordinator agent",
             "permission_mode": "acceptEdits",
-            "resource_limits": {
-                "cpu_quota": 200000,
-                "memory_limit": "4g",
-                "storage_limit": "10g"
-            },
+            "resource_limits": {"cpu_quota": 200000, "memory_limit": "4g", "storage_limit": "10g"},
             "agents": {
                 "frontend": {
                     "description": "Frontend development specialist",
                     "prompt": "You are a frontend expert",
                     "tools": ["Bash", "Read", "Write", "Edit"],
-                    "model": "sonnet"
+                    "model": "sonnet",
                 },
                 "backend": {
                     "description": "Backend development specialist",
                     "prompt": "You are a backend expert",
                     "tools": ["Bash", "Read", "Write"],
-                    "model": "opus"
-                }
-            }
+                    "model": "opus",
+                },
+            },
         }
 
         # POST the config
@@ -83,12 +79,8 @@ class TestBuilderConfigAPI:
             "name": "Test Load Multi-Agent",
             "allowed_tools": ["Bash"],
             "agents": {
-                "agent1": {
-                    "description": "Test agent",
-                    "prompt": "Test prompt",
-                    "tools": ["Read"]
-                }
-            }
+                "agent1": {"description": "Test agent", "prompt": "Test prompt", "tools": ["Read"]}
+            },
         }
         client.post("/api/configs/custom", json=config)
 
@@ -111,13 +103,10 @@ class TestBuilderConfigAPI:
                 "stdio-server": {
                     "type": "stdio",
                     "command": "node",
-                    "args": ["./mcp-server.js", "--port=3000"]
+                    "args": ["./mcp-server.js", "--port=3000"],
                 },
-                "http-server": {
-                    "type": "http",
-                    "url": "http://localhost:4000/mcp"
-                }
-            }
+                "http-server": {"type": "http", "url": "http://localhost:4000/mcp"},
+            },
         }
 
         # POST the config
@@ -154,8 +143,8 @@ class TestBuilderConfigAPI:
             "system_prompt": {
                 "type": "preset",
                 "preset": "claude_code",
-                "append": "Additional instructions for this agent"
-            }
+                "append": "Additional instructions for this agent",
+            },
         }
 
         # POST the config
@@ -185,7 +174,7 @@ class TestBuilderConfigAPI:
             "id": "test-plain-prompt",
             "name": "Test Plain Prompt",
             "allowed_tools": ["Bash"],
-            "system_prompt": "You are a helpful assistant"
+            "system_prompt": "You are a helpful assistant",
         }
 
         # POST the config
@@ -217,9 +206,9 @@ class TestBuilderConfigAPI:
             "env": {
                 "API_KEY": "test-key-123",
                 "DATABASE_URL": "postgres://localhost/test",
-                "DEBUG": "true"
+                "DEBUG": "true",
             },
-            "setting_sources": ["user", "project"]
+            "setting_sources": ["user", "project"],
         }
 
         # POST the config
@@ -257,35 +246,24 @@ class TestBuilderConfigAPI:
             "system_prompt": {
                 "type": "preset",
                 "preset": "claude_code",
-                "append": "Work collaboratively with sub-agents"
+                "append": "Work collaboratively with sub-agents",
             },
             "permission_mode": "plan",
             "model": "claude-opus-4",
             "cwd": "/workspace",
-            "env": {
-                "NODE_ENV": "production"
-            },
+            "env": {"NODE_ENV": "production"},
             "setting_sources": ["user", "project", "local"],
-            "resource_limits": {
-                "cpu_quota": 300000,
-                "memory_limit": "8g",
-                "storage_limit": "20g"
-            },
+            "resource_limits": {"cpu_quota": 300000, "memory_limit": "8g", "storage_limit": "20g"},
             "max_turns": 150,
             "agents": {
                 "researcher": {
                     "description": "Research specialist",
                     "prompt": "You research topics thoroughly",
                     "tools": ["WebSearch", "WebFetch"],
-                    "model": "haiku"
+                    "model": "haiku",
                 }
             },
-            "mcp_servers": {
-                "analytics": {
-                    "type": "sse",
-                    "url": "http://localhost:5000/analytics"
-                }
-            }
+            "mcp_servers": {"analytics": {"type": "sse", "url": "http://localhost:5000/analytics"}},
         }
 
         # POST the config
@@ -365,12 +343,7 @@ class TestBuilderConfigAPI:
             "id": "test-validation",
             "name": "Test Validation",
             "allowed_tools": ["Bash"],
-            "agents": {
-                "": {  # Empty name
-                    "description": "Invalid",
-                    "prompt": "Invalid"
-                }
-            }
+            "agents": {"": {"description": "Invalid", "prompt": "Invalid"}},  # Empty name
         }
 
         response = client.post("/api/configs/custom", json=config)
@@ -388,9 +361,9 @@ class TestBuilderConfigAPI:
             "mcp_servers": {
                 "invalid-server": {
                     "type": "invalid_type",  # Invalid type
-                    "url": "http://localhost:3000"
+                    "url": "http://localhost:3000",
                 }
-            }
+            },
         }
 
         response = client.post("/api/configs/custom", json=config)

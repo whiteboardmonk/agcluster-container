@@ -12,7 +12,7 @@ from agcluster.container.api import agent_chat, agents, configs, tools, files
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,9 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting AgCluster Container Runtime")
     logger.info(f"Agent image: {settings.agent_image}")
-    logger.info(f"Container limits: CPU={settings.container_cpu_quota}, Memory={settings.container_memory_limit}")
+    logger.info(
+        f"Container limits: CPU={settings.container_cpu_quota}, Memory={settings.container_memory_limit}"
+    )
 
     # Start session cleanup background task
     await session_manager.start_cleanup_task(interval_minutes=5)
@@ -45,7 +47,7 @@ app = FastAPI(
     title="AgCluster Container Runtime",
     description="Container runtime for Claude Agent SDK instances with OpenAI-compatible API",
     version="0.2.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # CORS middleware - configured with specific allowed origins for security
@@ -62,20 +64,13 @@ app.add_middleware(
 @app.get("/")
 async def root():
     """Root endpoint"""
-    return {
-        "service": "AgCluster Container Runtime",
-        "version": "0.2.0",
-        "status": "running"
-    }
+    return {"service": "AgCluster Container Runtime", "version": "0.2.0", "status": "running"}
 
 
 @app.get("/health")
 async def health():
     """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "agent_image": settings.agent_image
-    }
+    return {"status": "healthy", "agent_image": settings.agent_image}
 
 
 # Include routers
@@ -93,9 +88,10 @@ app.include_router(files.router, tags=["files"])
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "agcluster.container.api.main:app",
         host=settings.api_host,
         port=settings.api_port,
-        reload=settings.api_debug
+        reload=settings.api_debug,
     )

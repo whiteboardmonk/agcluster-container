@@ -174,9 +174,7 @@ class TestProviderCreation:
         ProviderFactory.register_provider("configurable", ConfigurableProvider)
 
         provider = ProviderFactory.create_provider(
-            "configurable",
-            option1="value1",
-            option2="value2"
+            "configurable", option1="value1", option2="value2"
         )
 
         assert provider.option1 == "value1"

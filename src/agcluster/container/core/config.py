@@ -19,7 +19,9 @@ class Settings(BaseSettings):
     container_provider: str = "docker"  # docker | fly_machines | cloudflare | vercel
 
     # Docker Settings
-    docker_network: str = "agcluster-container_agcluster-network"  # Docker Compose creates network with project prefix
+    docker_network: str = (
+        "agcluster-container_agcluster-network"  # Docker Compose creates network with project prefix
+    )
     agent_image: str = "agcluster/agent:latest"
 
     # Container Resource Limits (defaults when not specified in config)

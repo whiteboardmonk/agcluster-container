@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class SessionNotFoundError(Exception):
     """Raised when a session is not found"""
+
     pass
 
 
@@ -59,7 +60,7 @@ class SessionManager:
         api_key: str,
         config_id: Optional[str] = None,
         config: Optional[AgentConfig] = None,
-        provider: Optional[str] = None
+        provider: Optional[str] = None,
     ) -> tuple[str, AgentContainer]:
         """
         Create a new session from configuration
@@ -104,20 +105,17 @@ class SessionManager:
         # Use provider-specific container manager if provider specified
         if provider:
             from agcluster.container.core.container_manager import ContainerManager
+
             logger.info(f"Creating session {session_id} with provider {provider}")
             provider_manager = ContainerManager(provider_name=provider)
             agent_container = await provider_manager.create_agent_container_from_config(
-                api_key=api_key,
-                config=config,
-                config_id=effective_config_id
+                api_key=api_key, config=config, config_id=effective_config_id
             )
         else:
             # Use global container manager (default provider)
             logger.info(f"Creating session {session_id} with config {effective_config_id}")
             agent_container = await container_manager.create_agent_container_from_config(
-                api_key=api_key,
-                config=config,
-                config_id=effective_config_id
+                api_key=api_key, config=config, config_id=effective_config_id
             )
 
         # Store session
@@ -164,7 +162,7 @@ class SessionManager:
                 "config_id": agent_container.config_id,
                 "created_at": agent_container.created_at.isoformat(),
                 "last_active": agent_container.last_active.isoformat(),
-                "container_ip": agent_container.container_ip
+                "container_ip": agent_container.container_ip,
             }
         return sessions_info
 
@@ -192,7 +190,7 @@ class SessionManager:
         conversation_id: Optional[str],
         api_key: str,
         system_prompt: Optional[str] = None,
-        allowed_tools: Optional[str] = None
+        allowed_tools: Optional[str] = None,
     ) -> AgentContainer:
         """
         Get existing session or create new one (legacy method)
@@ -216,15 +214,15 @@ class SessionManager:
             agent_container = self.sessions[session_id]
             # Update last active timestamp
             agent_container.last_active = datetime.now(timezone.utc)
-            logger.info(f"Reusing existing session {session_id} for agent {agent_container.agent_id}")
+            logger.info(
+                f"Reusing existing session {session_id} for agent {agent_container.agent_id}"
+            )
             return agent_container
 
         # Create new session
         logger.info(f"Creating new session {session_id} (legacy mode)")
         agent_container = await container_manager.create_agent_container(
-            api_key=api_key,
-            system_prompt=system_prompt,
-            allowed_tools=allowed_tools
+            api_key=api_key, system_prompt=system_prompt, allowed_tools=allowed_tools
         )
 
         # Store session

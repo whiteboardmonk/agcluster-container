@@ -18,10 +18,7 @@ class TestAgentConfig:
 
     def test_minimal_config(self):
         """Test minimal valid configuration"""
-        config = AgentConfig(
-            id="test-agent",
-            name="Test Agent"
-        )
+        config = AgentConfig(id="test-agent", name="Test Agent")
 
         assert config.id == "test-agent"
         assert config.name == "Test Agent"
@@ -40,14 +37,12 @@ class TestAgentConfig:
             system_prompt="You are a helpful assistant",
             permission_mode="acceptEdits",
             resource_limits=ResourceLimits(
-                cpu_quota=200000,
-                memory_limit="4g",
-                storage_limit="10g"
+                cpu_quota=200000, memory_limit="4g", storage_limit="10g"
             ),
             max_turns=50,
             model="claude-sonnet-4.5",
             cwd="/workspace",
-            env={"DEBUG": "true"}
+            env={"DEBUG": "true"},
         )
 
         assert config.id == "code-assistant"
@@ -58,11 +53,7 @@ class TestAgentConfig:
 
     def test_system_prompt_as_string(self):
         """Test system prompt as plain string"""
-        config = AgentConfig(
-            id="test",
-            name="Test",
-            system_prompt="Custom prompt"
-        )
+        config = AgentConfig(id="test", name="Test", system_prompt="Custom prompt")
 
         assert config.system_prompt == "Custom prompt"
 
@@ -72,10 +63,8 @@ class TestAgentConfig:
             id="test",
             name="Test",
             system_prompt=SystemPromptPreset(
-                type="preset",
-                preset="claude_code",
-                append="Additional instructions"
-            )
+                type="preset", preset="claude_code", append="Additional instructions"
+            ),
         )
 
         assert isinstance(config.system_prompt, SystemPromptPreset)
@@ -85,28 +74,32 @@ class TestAgentConfig:
     def test_invalid_tool_name(self):
         """Test validation rejects invalid tool names"""
         with pytest.raises(ValidationError) as exc_info:
-            AgentConfig(
-                id="test",
-                name="Test",
-                allowed_tools=["InvalidTool"]
-            )
+            AgentConfig(id="test", name="Test", allowed_tools=["InvalidTool"])
 
         assert "Invalid tool" in str(exc_info.value)
 
     def test_valid_tool_names(self):
         """Test all valid built-in tool names"""
         valid_tools = [
-            "Bash", "Read", "Write", "Edit", "Grep", "Glob", "Task",
-            "WebFetch", "WebSearch", "TodoWrite", "NotebookEdit",
-            "BashOutput", "KillBash", "ExitPlanMode",
-            "ListMcpResources", "ReadMcpResource"
+            "Bash",
+            "Read",
+            "Write",
+            "Edit",
+            "Grep",
+            "Glob",
+            "Task",
+            "WebFetch",
+            "WebSearch",
+            "TodoWrite",
+            "NotebookEdit",
+            "BashOutput",
+            "KillBash",
+            "ExitPlanMode",
+            "ListMcpResources",
+            "ReadMcpResource",
         ]
 
-        config = AgentConfig(
-            id="test",
-            name="Test",
-            allowed_tools=valid_tools
-        )
+        config = AgentConfig(id="test", name="Test", allowed_tools=valid_tools)
 
         assert len(config.allowed_tools) == len(valid_tools)
 
@@ -115,7 +108,7 @@ class TestAgentConfig:
         config = AgentConfig(
             id="test",
             name="Test",
-            allowed_tools=["Bash", "mcp__github__create_issue", "mcp__slack__send_message"]
+            allowed_tools=["Bash", "mcp__github__create_issue", "mcp__slack__send_message"],
         )
 
         assert "mcp__github__create_issue" in config.allowed_tools
@@ -148,21 +141,13 @@ class TestAgentConfig:
         modes = ["default", "acceptEdits", "plan", "bypassPermissions"]
 
         for mode in modes:
-            config = AgentConfig(
-                id="test",
-                name="Test",
-                permission_mode=mode
-            )
+            config = AgentConfig(id="test", name="Test", permission_mode=mode)
             assert config.permission_mode == mode
 
     def test_invalid_permission_mode(self):
         """Test invalid permission mode is rejected"""
         with pytest.raises(ValidationError):
-            AgentConfig(
-                id="test",
-                name="Test",
-                permission_mode="invalid_mode"
-            )
+            AgentConfig(id="test", name="Test", permission_mode="invalid_mode")
 
 
 class TestAgentDefinition:
@@ -171,8 +156,7 @@ class TestAgentDefinition:
     def test_minimal_agent_definition(self):
         """Test minimal sub-agent definition"""
         agent = AgentDefinition(
-            description="Frontend specialist",
-            prompt="You are a frontend developer"
+            description="Frontend specialist", prompt="You are a frontend developer"
         )
 
         assert agent.description == "Frontend specialist"
@@ -186,7 +170,7 @@ class TestAgentDefinition:
             description="Backend specialist",
             prompt="You are a backend developer",
             tools=["Read", "Write", "Bash"],
-            model="haiku"
+            model="haiku",
         )
 
         assert len(agent.tools) == 3
@@ -197,11 +181,7 @@ class TestAgentDefinition:
         models = ["sonnet", "opus", "haiku", "inherit"]
 
         for model in models:
-            agent = AgentDefinition(
-                description="Test",
-                prompt="Test",
-                model=model
-            )
+            agent = AgentDefinition(description="Test", prompt="Test", model=model)
             assert agent.model == model
 
 
@@ -218,14 +198,14 @@ class TestMultiAgentConfig:
                 "frontend": AgentDefinition(
                     description="Frontend development",
                     prompt="You specialize in React",
-                    tools=["Read", "Write", "Edit"]
+                    tools=["Read", "Write", "Edit"],
                 ),
                 "backend": AgentDefinition(
                     description="Backend development",
                     prompt="You specialize in Python",
-                    tools=["Read", "Write", "Bash"]
-                )
-            }
+                    tools=["Read", "Write", "Bash"],
+                ),
+            },
         )
 
         assert len(config.agents) == 2
@@ -239,9 +219,7 @@ class TestMcpServerConfig:
 
     def test_stdio_server_minimal(self):
         """Test minimal stdio MCP server config"""
-        server = McpStdioServerConfig(
-            command="npx"
-        )
+        server = McpStdioServerConfig(command="npx")
 
         assert server.type == "stdio"
         assert server.command == "npx"
@@ -253,7 +231,7 @@ class TestMcpServerConfig:
         server = McpStdioServerConfig(
             command="npx",
             args=["-y", "@modelcontextprotocol/server-github"],
-            env={"GITHUB_TOKEN": "secret"}
+            env={"GITHUB_TOKEN": "secret"},
         )
 
         assert len(server.args) == 2
@@ -262,9 +240,7 @@ class TestMcpServerConfig:
     def test_sse_server(self):
         """Test SSE MCP server config"""
         server = McpSseServerConfig(
-            type="sse",
-            url="https://example.com/mcp",
-            headers={"Authorization": "Bearer token"}
+            type="sse", url="https://example.com/mcp", headers={"Authorization": "Bearer token"}
         )
 
         assert server.type == "sse"
@@ -273,10 +249,7 @@ class TestMcpServerConfig:
 
     def test_http_server(self):
         """Test HTTP MCP server config"""
-        server = McpHttpServerConfig(
-            type="http",
-            url="https://api.example.com/mcp"
-        )
+        server = McpHttpServerConfig(type="http", url="https://api.example.com/mcp")
 
         assert server.type == "http"
         assert server.url == "https://api.example.com/mcp"
@@ -288,15 +261,11 @@ class TestMcpServerConfig:
             name="Test",
             mcp_servers={
                 "github": McpStdioServerConfig(
-                    command="npx",
-                    args=["-y", "@modelcontextprotocol/server-github"]
+                    command="npx", args=["-y", "@modelcontextprotocol/server-github"]
                 ),
-                "slack": McpSseServerConfig(
-                    type="sse",
-                    url="https://slack.com/mcp"
-                )
+                "slack": McpSseServerConfig(type="sse", url="https://slack.com/mcp"),
             },
-            allowed_tools=["mcp__github__create_issue", "mcp__slack__send_message"]
+            allowed_tools=["mcp__github__create_issue", "mcp__slack__send_message"],
         )
 
         assert len(config.mcp_servers) == 2
@@ -320,11 +289,7 @@ class TestResourceLimits:
 
     def test_all_limits(self):
         """Test all resource limits"""
-        limits = ResourceLimits(
-            cpu_quota=200000,
-            memory_limit="4g",
-            storage_limit="10g"
-        )
+        limits = ResourceLimits(cpu_quota=200000, memory_limit="4g", storage_limit="10g")
 
         assert limits.cpu_quota == 200000
         assert limits.memory_limit == "4g"
@@ -340,7 +305,7 @@ class TestConfigSerialization:
             id="test",
             name="Test Agent",
             allowed_tools=["Bash", "Read"],
-            permission_mode="acceptEdits"
+            permission_mode="acceptEdits",
         )
 
         config_dict = config.model_dump()
@@ -356,10 +321,7 @@ class TestConfigSerialization:
             "name": "Test Agent",
             "allowed_tools": ["Bash", "Read"],
             "permission_mode": "acceptEdits",
-            "resource_limits": {
-                "cpu_quota": 200000,
-                "memory_limit": "4g"
-            }
+            "resource_limits": {"cpu_quota": 200000, "memory_limit": "4g"},
         }
 
         config = AgentConfig(**config_dict)
@@ -370,11 +332,7 @@ class TestConfigSerialization:
 
     def test_json_serialization(self):
         """Test JSON serialization"""
-        config = AgentConfig(
-            id="test",
-            name="Test",
-            allowed_tools=["Bash"]
-        )
+        config = AgentConfig(id="test", name="Test", allowed_tools=["Bash"])
 
         json_str = config.model_dump_json()
         assert "test" in json_str
@@ -387,23 +345,18 @@ class TestConfigSerialization:
             name="Full-Stack",
             allowed_tools=["Task", "Read", "Write"],
             system_prompt=SystemPromptPreset(
-                type="preset",
-                preset="claude_code",
-                append="Follow TDD"
+                type="preset", preset="claude_code", append="Follow TDD"
             ),
             mcp_servers={
                 "github": McpStdioServerConfig(
-                    command="npx",
-                    args=["-y", "@modelcontextprotocol/server-github"]
+                    command="npx", args=["-y", "@modelcontextprotocol/server-github"]
                 )
             },
             agents={
                 "frontend": AgentDefinition(
-                    description="Frontend",
-                    prompt="React specialist",
-                    tools=["Read", "Write"]
+                    description="Frontend", prompt="React specialist", tools=["Read", "Write"]
                 )
-            }
+            },
         )
 
         # Serialize to dict and back

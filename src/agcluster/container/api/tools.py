@@ -81,10 +81,9 @@ async def stream_tool_executions(session_id: str):
                         current_time = asyncio.get_event_loop().time()
                         yield {
                             "event": "ping",
-                            "data": json.dumps({
-                                "timestamp": current_time,
-                                "uptime": current_time - start_time
-                            })
+                            "data": json.dumps(
+                                {"timestamp": current_time, "uptime": current_time - start_time}
+                            ),
                         }
 
                         # Wait before next ping
@@ -92,27 +91,33 @@ async def stream_tool_executions(session_id: str):
 
             except ConnectionError as e:
                 retry_count += 1
-                logger.error(f"Connection error in tool stream (attempt {retry_count}/{max_retries}): {e}")
+                logger.error(
+                    f"Connection error in tool stream (attempt {retry_count}/{max_retries}): {e}"
+                )
 
                 if retry_count < max_retries:
                     # Send error event but keep stream alive for retry
                     yield {
                         "event": "error",
-                        "data": json.dumps({
-                            "message": f"Connection error, retrying... ({retry_count}/{max_retries})",
-                            "error": str(e)
-                        })
+                        "data": json.dumps(
+                            {
+                                "message": f"Connection error, retrying... ({retry_count}/{max_retries})",
+                                "error": str(e),
+                            }
+                        ),
                     }
-                    await asyncio.sleep(2 ** retry_count)  # Exponential backoff
+                    await asyncio.sleep(2**retry_count)  # Exponential backoff
                 else:
                     # Max retries reached
                     yield {
                         "event": "error",
-                        "data": json.dumps({
-                            "message": "Failed to connect to agent container after multiple attempts",
-                            "error": str(e),
-                            "fatal": True
-                        })
+                        "data": json.dumps(
+                            {
+                                "message": "Failed to connect to agent container after multiple attempts",
+                                "error": str(e),
+                                "fatal": True,
+                            }
+                        ),
                     }
                     break
 
@@ -120,11 +125,9 @@ async def stream_tool_executions(session_id: str):
                 logger.error(f"Unexpected error in tool stream: {e}")
                 yield {
                     "event": "error",
-                    "data": json.dumps({
-                        "message": "Unexpected error",
-                        "error": str(e),
-                        "fatal": True
-                    })
+                    "data": json.dumps(
+                        {"message": "Unexpected error", "error": str(e), "fatal": True}
+                    ),
                 }
                 break
 
@@ -147,29 +150,34 @@ async def get_resource_usage(session_id: str):
 
     try:
         # Get Docker container stats
-        docker_container = container_manager.provider.docker_client.containers.get(container.container_id)
+        docker_container = container_manager.provider.docker_client.containers.get(
+            container.container_id
+        )
         stats = docker_container.stats(stream=False)
 
         # Parse CPU usage
-        cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
-                   stats['precpu_stats']['cpu_usage']['total_usage']
-        system_delta = stats['cpu_stats']['system_cpu_usage'] - \
-                      stats['precpu_stats']['system_cpu_usage']
-        cpu_count = stats['cpu_stats']['online_cpus']
+        cpu_delta = (
+            stats["cpu_stats"]["cpu_usage"]["total_usage"]
+            - stats["precpu_stats"]["cpu_usage"]["total_usage"]
+        )
+        system_delta = (
+            stats["cpu_stats"]["system_cpu_usage"] - stats["precpu_stats"]["system_cpu_usage"]
+        )
+        cpu_count = stats["cpu_stats"]["online_cpus"]
 
         cpu_percent = 0.0
         if system_delta > 0 and cpu_delta > 0:
             cpu_percent = (cpu_delta / system_delta) * cpu_count * 100.0
 
         # Parse memory usage
-        memory_usage = stats['memory_stats'].get('usage', 0)
-        memory_limit = stats['memory_stats'].get('limit', 1)
+        memory_usage = stats["memory_stats"].get("usage", 0)
+        memory_limit = stats["memory_stats"].get("limit", 1)
         memory_percent = (memory_usage / memory_limit) * 100.0 if memory_limit > 0 else 0.0
 
         # Get disk usage (from container filesystem)
         try:
             exec_result = docker_container.exec_run("df -h /workspace | tail -1 | awk '{print $5}'")
-            disk_usage_str = exec_result.output.decode().strip().rstrip('%')
+            disk_usage_str = exec_result.output.decode().strip().rstrip("%")
             disk_percent = float(disk_usage_str) if disk_usage_str else 0.0
         except Exception:
             disk_percent = 0.0
@@ -177,21 +185,16 @@ async def get_resource_usage(session_id: str):
         return {
             "session_id": session_id,
             "container_id": container.container_id,
-            "cpu": {
-                "percent": round(cpu_percent, 2),
-                "count": cpu_count
-            },
+            "cpu": {"percent": round(cpu_percent, 2), "count": cpu_count},
             "memory": {
                 "used_bytes": memory_usage,
                 "limit_bytes": memory_limit,
                 "percent": round(memory_percent, 2),
                 "used_mb": round(memory_usage / (1024 * 1024), 2),
-                "limit_mb": round(memory_limit / (1024 * 1024), 2)
+                "limit_mb": round(memory_limit / (1024 * 1024), 2),
             },
-            "disk": {
-                "percent": round(disk_percent, 2)
-            },
-            "status": "running"
+            "disk": {"percent": round(disk_percent, 2)},
+            "status": "running",
         }
 
     except Exception as e:

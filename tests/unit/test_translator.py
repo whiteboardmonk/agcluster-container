@@ -39,66 +39,43 @@ class TestClaudeMessageToOpenAIText:
 
     def test_extract_message_content(self):
         """Test extracting content from normal message."""
-        message = {
-            "type": "message",
-            "data": {
-                "content": "Hello, world!"
-            }
-        }
+        message = {"type": "message", "data": {"content": "Hello, world!"}}
         result = claude_message_to_openai_text(message)
         assert result == "Hello, world!"
 
     def test_extract_empty_content(self):
         """Test extracting empty content."""
-        message = {
-            "type": "message",
-            "data": {
-                "content": ""
-            }
-        }
+        message = {"type": "message", "data": {"content": ""}}
         result = claude_message_to_openai_text(message)
         assert result == ""
 
     def test_extract_missing_content_field(self):
         """Test handling message with missing content field."""
-        message = {
-            "type": "message",
-            "data": {}
-        }
+        message = {"type": "message", "data": {}}
         result = claude_message_to_openai_text(message)
         assert result == ""
 
     def test_extract_missing_data_field(self):
         """Test handling message with missing data field."""
-        message = {
-            "type": "message"
-        }
+        message = {"type": "message"}
         result = claude_message_to_openai_text(message)
         assert result == ""
 
     def test_extract_error_message(self):
         """Test extracting error message."""
-        message = {
-            "type": "error",
-            "message": "Something went wrong"
-        }
+        message = {"type": "error", "message": "Something went wrong"}
         result = claude_message_to_openai_text(message)
         assert result == "[Error: Something went wrong]"
 
     def test_extract_error_without_message(self):
         """Test error without message field."""
-        message = {
-            "type": "error"
-        }
+        message = {"type": "error"}
         result = claude_message_to_openai_text(message)
         assert result == "[Error: Unknown error]"
 
     def test_unknown_message_type(self):
         """Test handling unknown message type."""
-        message = {
-            "type": "unknown",
-            "data": {"content": "test"}
-        }
+        message = {"type": "unknown", "data": {"content": "test"}}
         result = claude_message_to_openai_text(message)
         assert result == ""
 
@@ -114,6 +91,7 @@ class TestStreamToOpenAISSE:
 
     async def test_single_message_stream(self):
         """Test converting single message to SSE."""
+
         async def mock_stream():
             yield {"type": "message", "data": {"type": "content", "content": "Hello"}}
             yield {"type": "complete", "status": "success"}
@@ -141,6 +119,7 @@ class TestStreamToOpenAISSE:
 
     async def test_multiple_messages_stream(self):
         """Test streaming multiple messages."""
+
         async def mock_stream():
             yield {"type": "message", "data": {"type": "content", "content": "Hello"}}
             yield {"type": "message", "data": {"type": "content", "content": " world"}}
@@ -163,6 +142,7 @@ class TestStreamToOpenAISSE:
 
     async def test_empty_content_messages_skipped(self):
         """Test that messages with empty content are skipped."""
+
         async def mock_stream():
             yield {"type": "message", "data": {"type": "content", "content": ""}}
             yield {"type": "message", "data": {"type": "content", "content": "Hello"}}
@@ -178,6 +158,7 @@ class TestStreamToOpenAISSE:
 
     async def test_error_in_stream(self):
         """Test handling error message in stream."""
+
         async def mock_stream():
             yield {"type": "message", "data": {"type": "content", "content": "Starting..."}}
             yield {"type": "error", "message": "Connection lost"}
@@ -196,6 +177,7 @@ class TestStreamToOpenAISSE:
 
     async def test_sse_format_compliance(self):
         """Test that SSE format matches OpenAI spec."""
+
         async def mock_stream():
             yield {"type": "message", "data": {"type": "content", "content": "Test"}}
             yield {"type": "complete", "status": "success"}

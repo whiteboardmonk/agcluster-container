@@ -2,11 +2,7 @@
 
 import pytest
 from dataclasses import asdict
-from agcluster.container.core.providers.base import (
-    ContainerInfo,
-    ProviderConfig,
-    ContainerProvider
-)
+from agcluster.container.core.providers.base import ContainerInfo, ProviderConfig, ContainerProvider
 
 
 @pytest.mark.unit
@@ -20,7 +16,7 @@ class TestContainerInfo:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "agent-456"}
+            metadata={"agent_id": "agent-456"},
         )
 
         assert info.container_id == "test-123"
@@ -36,7 +32,7 @@ class TestContainerInfo:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         data = asdict(info)
@@ -51,11 +47,7 @@ class TestContainerInfo:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={
-                "custom_field": "value",
-                "nested": {"data": "here"},
-                "count": 42
-            }
+            metadata={"custom_field": "value", "nested": {"data": "here"}, "count": 42},
         )
 
         assert info.metadata["custom_field"] == "value"
@@ -78,7 +70,7 @@ class TestProviderConfig:
             system_prompt="Test prompt",
             max_turns=50,
             api_key="test-key",
-            platform_credentials={}
+            platform_credentials={},
         )
 
         assert config.platform == "docker"
@@ -98,10 +90,7 @@ class TestProviderConfig:
             system_prompt="You are a helpful AI assistant.",
             max_turns=100,
             api_key="sk-ant-test",
-            platform_credentials={
-                "fly_api_token": "fly_token_123",
-                "fly_app_name": "my-app"
-            }
+            platform_credentials={"fly_api_token": "fly_token_123", "fly_app_name": "my-app"},
         )
 
         assert config.platform == "fly_machines"
@@ -118,7 +107,7 @@ class TestProviderConfig:
             system_prompt="",
             max_turns=100,
             api_key="test",
-            platform_credentials={}
+            platform_credentials={},
         )
 
         assert config.cpu_quota == 400000
@@ -136,7 +125,7 @@ class TestProviderConfig:
             system_prompt="Test",
             max_turns=50,
             api_key="key",
-            platform_credentials={}
+            platform_credentials={},
         )
 
         data = asdict(config)
@@ -159,6 +148,7 @@ class TestContainerProviderInterface:
 
         class IncompleteProvider(ContainerProvider):
             """Provider missing implementations."""
+
             pass
 
         with pytest.raises(TypeError, match="Can't instantiate abstract class"):
@@ -176,7 +166,7 @@ class TestContainerProviderInterface:
                     endpoint_url="http://test:3000",
                     status="running",
                     platform="test",
-                    metadata={}
+                    metadata={},
                 )
 
             async def stop_container(self, container_id):
@@ -212,7 +202,7 @@ class TestProviderMethodSignatures:
                 endpoint_url="http://test:3000",
                 status="running",
                 platform="test",
-                metadata={"session_id": session_id}
+                metadata={"session_id": session_id},
             )
 
         async def stop_container(self, container_id: str) -> bool:
@@ -243,7 +233,7 @@ class TestProviderMethodSignatures:
             system_prompt="",
             max_turns=50,
             api_key="test",
-            platform_credentials={}
+            platform_credentials={},
         )
 
         result = await provider.create_container("session-123", config)
@@ -275,7 +265,7 @@ class TestProviderMethodSignatures:
             endpoint_url="http://test:3000",
             status="running",
             platform="test",
-            metadata={}
+            metadata={},
         )
 
         messages = []

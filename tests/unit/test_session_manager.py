@@ -13,7 +13,7 @@ from agcluster.container.models.agent_config import AgentConfig
 @pytest.fixture
 def mock_container_manager():
     """Mock container manager"""
-    with patch('agcluster.container.core.session_manager.container_manager') as mock:
+    with patch("agcluster.container.core.session_manager.container_manager") as mock:
         # Create a mock container
         mock_container = Mock(spec=AgentContainer)
         mock_container.agent_id = "test-agent-123"
@@ -66,8 +66,7 @@ class TestGetOrCreateSession:
     async def test_create_new_session(self, session_mgr, mock_container_manager):
         """Should create new session when none exists"""
         container = await session_mgr.get_or_create_session(
-            conversation_id="conv-new",
-            api_key="sk-ant-test-key"
+            conversation_id="conv-new", api_key="sk-ant-test-key"
         )
 
         assert container.agent_id == "test-agent-123"
@@ -79,14 +78,12 @@ class TestGetOrCreateSession:
         """Should reuse existing session for same conversation"""
         # Create first session
         container1 = await session_mgr.get_or_create_session(
-            conversation_id="conv-reuse",
-            api_key="sk-ant-test-key"
+            conversation_id="conv-reuse", api_key="sk-ant-test-key"
         )
 
         # Get same session again
         container2 = await session_mgr.get_or_create_session(
-            conversation_id="conv-reuse",
-            api_key="sk-ant-test-key"
+            conversation_id="conv-reuse", api_key="sk-ant-test-key"
         )
 
         assert container1 == container2
@@ -98,8 +95,7 @@ class TestGetOrCreateSession:
         """Should update last_active when reusing session"""
         # Create session
         container = await session_mgr.get_or_create_session(
-            conversation_id="conv-active",
-            api_key="sk-ant-test-key"
+            conversation_id="conv-active", api_key="sk-ant-test-key"
         )
 
         original_time = container.last_active
@@ -109,15 +105,16 @@ class TestGetOrCreateSession:
 
         # Reuse session
         await session_mgr.get_or_create_session(
-            conversation_id="conv-active",
-            api_key="sk-ant-test-key"
+            conversation_id="conv-active", api_key="sk-ant-test-key"
         )
 
         # last_active should be updated
         assert container.last_active > original_time
 
     @pytest.mark.asyncio
-    async def test_different_conversations_different_sessions(self, session_mgr, mock_container_manager):
+    async def test_different_conversations_different_sessions(
+        self, session_mgr, mock_container_manager
+    ):
         """Different conversations should get different sessions"""
         # Need to return different containers for different calls
         container1 = Mock(spec=AgentContainer)
@@ -146,8 +143,7 @@ class TestCleanupIdleSessions:
         """Should cleanup sessions that exceed idle timeout"""
         # Create session
         container = await session_mgr.get_or_create_session(
-            conversation_id="conv-idle",
-            api_key="sk-ant-test-key"
+            conversation_id="conv-idle", api_key="sk-ant-test-key"
         )
 
         # Manually set last_active to past idle timeout
@@ -165,8 +161,7 @@ class TestCleanupIdleSessions:
         """Should keep sessions that are still active"""
         # Create session
         await session_mgr.get_or_create_session(
-            conversation_id="conv-active",
-            api_key="sk-ant-test-key"
+            conversation_id="conv-active", api_key="sk-ant-test-key"
         )
 
         # Run cleanup
@@ -318,18 +313,14 @@ class TestCreateSessionFromConfig:
         )
 
         # Mock config loader
-        with patch('agcluster.container.core.session_manager.load_config_from_id') as mock_load:
+        with patch("agcluster.container.core.session_manager.load_config_from_id") as mock_load:
             mock_config = AgentConfig(
-                id="code-assistant",
-                name="Code Assistant",
-                allowed_tools=["Bash", "Read"]
+                id="code-assistant", name="Code Assistant", allowed_tools=["Bash", "Read"]
             )
             mock_load.return_value = mock_config
 
             session_id, container = await session_mgr.create_session_from_config(
-                conversation_id="conv-123",
-                api_key="sk-ant-test-key",
-                config_id="code-assistant"
+                conversation_id="conv-123", api_key="sk-ant-test-key", config_id="code-assistant"
             )
 
             assert session_id == "conv-conv-123"
@@ -350,30 +341,25 @@ class TestCreateSessionFromConfig:
         )
 
         inline_config = AgentConfig(
-            id="custom-agent",
-            name="Custom Agent",
-            allowed_tools=["Read", "Write"]
+            id="custom-agent", name="Custom Agent", allowed_tools=["Read", "Write"]
         )
 
         session_id, container = await session_mgr.create_session_from_config(
-            conversation_id="conv-456",
-            api_key="sk-ant-test-key",
-            config=inline_config
+            conversation_id="conv-456", api_key="sk-ant-test-key", config=inline_config
         )
 
         assert session_id == "conv-conv-456"
         assert container.agent_id == "test-agent-456"
         # Should be called with inline config
         call_args = mock_container_manager.create_agent_container_from_config.call_args
-        assert call_args[1]['config'] == inline_config
+        assert call_args[1]["config"] == inline_config
 
     @pytest.mark.asyncio
     async def test_create_session_without_config_raises_error(self, session_mgr):
         """Should raise ValueError if neither config_id nor config provided"""
         with pytest.raises(ValueError, match="Either config_id or config must be provided"):
             await session_mgr.create_session_from_config(
-                conversation_id="conv-789",
-                api_key="sk-ant-test-key"
+                conversation_id="conv-789", api_key="sk-ant-test-key"
             )
 
     @pytest.mark.asyncio
@@ -400,16 +386,12 @@ class TestCreateSessionFromConfig:
 
         # Create first session
         await session_mgr.create_session_from_config(
-            conversation_id="conv-replace",
-            api_key="sk-ant-key",
-            config=config
+            conversation_id="conv-replace", api_key="sk-ant-key", config=config
         )
 
         # Create second session with same conversation ID
         session_id, container = await session_mgr.create_session_from_config(
-            conversation_id="conv-replace",
-            api_key="sk-ant-key",
-            config=config
+            conversation_id="conv-replace", api_key="sk-ant-key", config=config
         )
 
         # Should have stopped first container
@@ -437,9 +419,7 @@ class TestGetSession:
 
         # Create session
         session_id, _ = await session_mgr.create_session_from_config(
-            conversation_id="conv-get",
-            api_key="sk-ant-key",
-            config=config
+            conversation_id="conv-get", api_key="sk-ant-key", config=config
         )
 
         # Get session
@@ -467,9 +447,7 @@ class TestGetSession:
         config = AgentConfig(id="test", name="Test", allowed_tools=["Bash"])
 
         session_id, _ = await session_mgr.create_session_from_config(
-            conversation_id="conv-active",
-            api_key="sk-ant-key",
-            config=config
+            conversation_id="conv-active", api_key="sk-ant-key", config=config
         )
 
         original_time = mock_container.last_active
@@ -552,9 +530,7 @@ class TestCleanupSession:
 
         # Create session
         session_id, _ = await session_mgr.create_session_from_config(
-            conversation_id="conv-cleanup",
-            api_key="sk-ant-key",
-            config=config
+            conversation_id="conv-cleanup", api_key="sk-ant-key", config=config
         )
 
         # Cleanup session

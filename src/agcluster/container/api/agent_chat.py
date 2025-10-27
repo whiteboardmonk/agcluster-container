@@ -17,15 +17,18 @@ router = APIRouter()
 
 class AgentChatRequest(BaseModel):
     """Request model for agent chat"""
+
     messages: list[ChatMessage] = Field(..., description="Chat messages")
-    session_id: Optional[str] = Field(None, alias="sessionId", description="Session ID from /api/agents/launch")
+    session_id: Optional[str] = Field(
+        None, alias="sessionId", description="Session ID from /api/agents/launch"
+    )
 
 
 @router.post("/chat")
 async def agent_chat(
     request: AgentChatRequest,
     authorization: Optional[str] = Header(None),
-    x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
+    x_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
 ):
     """
     Claude-native streaming chat endpoint for AgCluster UI
@@ -52,7 +55,7 @@ async def agent_chat(
     if not api_key:
         raise HTTPException(
             status_code=401,
-            detail="Missing or invalid Authorization header. Provide: 'Bearer YOUR_ANTHROPIC_API_KEY'"
+            detail="Missing or invalid Authorization header. Provide: 'Bearer YOUR_ANTHROPIC_API_KEY'",
         )
 
     # Get session ID from request body or header
@@ -61,7 +64,7 @@ async def agent_chat(
     if not session_id:
         raise HTTPException(
             status_code=400,
-            detail="Session ID required. Launch a session via /api/agents/launch first."
+            detail="Session ID required. Launch a session via /api/agents/launch first.",
         )
 
     # Extract the user's message (last message with role "user")
@@ -82,25 +85,22 @@ async def agent_chat(
         except SessionNotFoundError:
             raise HTTPException(
                 status_code=404,
-                detail=f"Session {session_id} not found. Launch a new session via /api/agents/launch"
+                detail=f"Session {session_id} not found. Launch a new session via /api/agents/launch",
             )
 
         logger.info(
-            f"Processing message for agent {agent_container.agent_id} "
-            f"(session: {session_id})"
+            f"Processing message for agent {agent_container.agent_id} " f"(session: {session_id})"
         )
 
         # Stream Claude SDK events
         return StreamingResponse(
-            stream_claude_events(
-                agent_container.query(user_message)
-            ),
+            stream_claude_events(agent_container.query(user_message)),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Accel-Buffering": "no"  # Disable nginx buffering
-            }
+                "X-Accel-Buffering": "no",  # Disable nginx buffering
+            },
         )
 
     except HTTPException:

@@ -22,6 +22,7 @@ class ContainerInfo:
         platform: Provider platform name (docker, fly_machines, cloudflare, vercel)
         metadata: Platform-specific additional data
     """
+
     container_id: str
     endpoint_url: str  # HTTP/SSE endpoint (e.g., http://172.17.0.2:3000 or https://agent.fly.dev)
     status: str
@@ -45,6 +46,7 @@ class ProviderConfig:
         api_key: Anthropic API key
         platform_credentials: Platform-specific authentication credentials
     """
+
     platform: str
     cpu_quota: int
     memory_limit: str
@@ -70,11 +72,7 @@ class ContainerProvider(ABC):
     """
 
     @abstractmethod
-    async def create_container(
-        self,
-        session_id: str,
-        config: ProviderConfig
-    ) -> ContainerInfo:
+    async def create_container(self, session_id: str, config: ProviderConfig) -> ContainerInfo:
         """
         Create and start a new container/instance for the agent.
 
@@ -118,10 +116,7 @@ class ContainerProvider(ABC):
 
     @abstractmethod
     async def execute_query(
-        self,
-        container_info: ContainerInfo,
-        query: str,
-        conversation_history: list[Dict[str, Any]]
+        self, container_info: ContainerInfo, query: str, conversation_history: list[Dict[str, Any]]
     ) -> AsyncIterator[Dict[str, Any]]:
         """
         Execute a query on the agent container and stream responses via HTTP/SSE.

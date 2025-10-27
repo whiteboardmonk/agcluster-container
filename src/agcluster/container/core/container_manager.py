@@ -20,7 +20,12 @@ class AgentContainer:
     while using the new provider-based ContainerInfo internally.
     """
 
-    def __init__(self, container_info: ContainerInfo, config_id: Optional[str] = None, config: Optional[AgentConfig] = None):
+    def __init__(
+        self,
+        container_info: ContainerInfo,
+        config_id: Optional[str] = None,
+        config: Optional[AgentConfig] = None,
+    ):
         self.container_info = container_info
         self.agent_id = container_info.metadata.get("agent_id", container_info.container_id[:12])
         self.container_id = container_info.container_id
@@ -44,7 +49,7 @@ class AgentContainer:
             async for response in container_manager.provider.execute_query(
                 self.container_info,
                 message,
-                []  # Conversation history (TODO: maintain across calls if needed)
+                [],  # Conversation history (TODO: maintain across calls if needed)
             ):
                 # Update last active
                 self.last_active = datetime.now(timezone.utc)
@@ -58,10 +63,7 @@ class AgentContainer:
 
         except Exception as e:
             logger.error(f"Error querying container {self.agent_id}: {e}")
-            yield {
-                "type": "error",
-                "message": f"Container communication error: {str(e)}"
-            }
+            yield {"type": "error", "message": f"Container communication error: {str(e)}"}
 
 
 class ContainerManager:
@@ -87,41 +89,35 @@ class ContainerManager:
         try:
             if provider_name == "docker":
                 self.provider = ProviderFactory.create_provider(
-                    "docker",
-                    network_name=settings.docker_network
+                    "docker", network_name=settings.docker_network
                 )
             elif provider_name == "fly_machines":
                 # TODO: Implement when FlyProvider is ready
                 logger.warning("Fly Machines provider not yet implemented, falling back to Docker")
                 self.provider = ProviderFactory.create_provider(
-                    "docker",
-                    network_name=settings.docker_network
+                    "docker", network_name=settings.docker_network
                 )
             elif provider_name == "cloudflare":
                 # TODO: Implement when CloudflareProvider is ready
                 logger.warning("Cloudflare provider not yet implemented, falling back to Docker")
                 self.provider = ProviderFactory.create_provider(
-                    "docker",
-                    network_name=settings.docker_network
+                    "docker", network_name=settings.docker_network
                 )
             elif provider_name == "vercel":
                 # TODO: Implement when VercelProvider is ready
                 logger.warning("Vercel provider not yet implemented, falling back to Docker")
                 self.provider = ProviderFactory.create_provider(
-                    "docker",
-                    network_name=settings.docker_network
+                    "docker", network_name=settings.docker_network
                 )
             else:
                 logger.warning(f"Unknown provider {provider_name}, using docker")
                 self.provider = ProviderFactory.create_provider(
-                    "docker",
-                    network_name=settings.docker_network
+                    "docker", network_name=settings.docker_network
                 )
         except Exception as e:
             logger.error(f"Error creating provider {provider_name}: {e}, falling back to docker")
             self.provider = ProviderFactory.create_provider(
-                "docker",
-                network_name=settings.docker_network
+                "docker", network_name=settings.docker_network
             )
 
         self.provider_name = provider_name
@@ -130,10 +126,7 @@ class ContainerManager:
         logger.info(f"ContainerManager initialized with {self.provider.__class__.__name__}")
 
     async def create_agent_container_from_config(
-        self,
-        api_key: str,
-        config: AgentConfig,
-        config_id: str
+        self, api_key: str, config: AgentConfig, config_id: str
     ) -> AgentContainer:
         """
         Create agent container from configuration using provider.
@@ -153,14 +146,26 @@ class ContainerManager:
         # Build provider config
         provider_config = ProviderConfig(
             platform=self.provider_name,
-            cpu_quota=config.resource_limits.cpu_quota if config.resource_limits else settings.container_cpu_quota,
-            memory_limit=config.resource_limits.memory_limit if config.resource_limits else settings.container_memory_limit,
-            storage_limit=config.resource_limits.storage_limit if config.resource_limits else settings.container_storage_limit,
+            cpu_quota=(
+                config.resource_limits.cpu_quota
+                if config.resource_limits
+                else settings.container_cpu_quota
+            ),
+            memory_limit=(
+                config.resource_limits.memory_limit
+                if config.resource_limits
+                else settings.container_memory_limit
+            ),
+            storage_limit=(
+                config.resource_limits.storage_limit
+                if config.resource_limits
+                else settings.container_storage_limit
+            ),
             allowed_tools=config.allowed_tools,
             system_prompt=config.system_prompt,
             max_turns=config.max_turns,
             api_key=api_key,
-            platform_credentials={}  # TODO: Add platform-specific creds when needed
+            platform_credentials={},  # TODO: Add platform-specific creds when needed
         )
 
         # Create container via provider
@@ -168,9 +173,7 @@ class ContainerManager:
 
         # Wrap in AgentContainer for backward compatibility
         agent_container = AgentContainer(
-            container_info=container_info,
-            config_id=config_id,
-            config=config
+            container_info=container_info, config_id=config_id, config=config
         )
 
         # Store in active containers
@@ -182,10 +185,7 @@ class ContainerManager:
         return agent_container
 
     async def create_agent_container(
-        self,
-        api_key: str,
-        system_prompt: Optional[str] = None,
-        allowed_tools: Optional[str] = None
+        self, api_key: str, system_prompt: Optional[str] = None, allowed_tools: Optional[str] = None
     ) -> AgentContainer:
         """
         Create a new agent container (legacy method for backward compatibility).
@@ -215,7 +215,7 @@ class ContainerManager:
             system_prompt=system_prompt or settings.default_system_prompt,
             max_turns=100,  # Default
             api_key=api_key,
-            platform_credentials={}
+            platform_credentials={},
         )
 
         # Create container via provider

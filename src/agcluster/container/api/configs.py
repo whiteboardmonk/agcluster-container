@@ -8,7 +8,7 @@ import logging
 from agcluster.container.core.config_loader import (
     load_config_from_id,
     list_available_configs,
-    ConfigNotFoundError
+    ConfigNotFoundError,
 )
 from agcluster.container.models.schemas import ConfigInfo, ConfigListResponse
 from agcluster.container.models.agent_config import AgentConfig
@@ -30,21 +30,20 @@ async def list_configs():
         # Convert to ConfigInfo format
         config_list = []
         for config in configs:
-            config_list.append(ConfigInfo(
-                id=config.id,
-                name=config.name,
-                description=config.description,
-                version=config.version,
-                allowed_tools=config.allowed_tools,
-                has_mcp_servers=bool(config.mcp_servers),
-                has_sub_agents=bool(config.agents),
-                permission_mode=config.permission_mode
-            ))
+            config_list.append(
+                ConfigInfo(
+                    id=config.id,
+                    name=config.name,
+                    description=config.description,
+                    version=config.version,
+                    allowed_tools=config.allowed_tools,
+                    has_mcp_servers=bool(config.mcp_servers),
+                    has_sub_agents=bool(config.agents),
+                    permission_mode=config.permission_mode,
+                )
+            )
 
-        return ConfigListResponse(
-            configs=config_list,
-            total=len(config_list)
-        )
+        return ConfigListResponse(configs=config_list, total=len(config_list))
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list configs: {str(e)}")
@@ -98,16 +97,12 @@ async def save_custom_config(config: AgentConfig):
         # Save config as YAML
         config_file = config_dir / f"{config.id}.yaml"
 
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(config.model_dump(), f, default_flow_style=False, sort_keys=False)
 
         logger.info(f"Saved custom config: {config.id} to {config_file}")
 
-        return {
-            "status": "success",
-            "config_id": config.id,
-            "path": str(config_file)
-        }
+        return {"status": "success", "config_id": config.id, "path": str(config_file)}
 
     except Exception as e:
         logger.error(f"Failed to save custom config: {e}")
@@ -132,32 +127,31 @@ async def list_custom_configs():
 
         for config_file in config_dir.glob("*.yaml"):
             try:
-                with open(config_file, 'r') as f:
+                with open(config_file, "r") as f:
                     config_data = yaml.safe_load(f)
 
                 # Create AgentConfig from loaded data
                 config = AgentConfig(**config_data)
 
                 # Convert to ConfigInfo format
-                custom_configs.append(ConfigInfo(
-                    id=config.id,
-                    name=config.name,
-                    description=config.description,
-                    version=config.version,
-                    allowed_tools=config.allowed_tools,
-                    has_mcp_servers=bool(config.mcp_servers),
-                    has_sub_agents=bool(config.agents),
-                    permission_mode=config.permission_mode
-                ))
+                custom_configs.append(
+                    ConfigInfo(
+                        id=config.id,
+                        name=config.name,
+                        description=config.description,
+                        version=config.version,
+                        allowed_tools=config.allowed_tools,
+                        has_mcp_servers=bool(config.mcp_servers),
+                        has_sub_agents=bool(config.agents),
+                        permission_mode=config.permission_mode,
+                    )
+                )
 
             except Exception as e:
                 logger.warning(f"Failed to load custom config {config_file}: {e}")
                 continue
 
-        return ConfigListResponse(
-            configs=custom_configs,
-            total=len(custom_configs)
-        )
+        return ConfigListResponse(configs=custom_configs, total=len(custom_configs))
 
     except Exception as e:
         logger.error(f"Failed to list custom configs: {e}")

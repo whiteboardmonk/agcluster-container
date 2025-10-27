@@ -16,6 +16,7 @@ CUSTOM_CONFIG_DIR = USER_CONFIG_DIR / "custom"
 
 class ConfigNotFoundError(Exception):
     """Raised when a configuration cannot be found"""
+
     pass
 
 
@@ -42,7 +43,7 @@ def load_config_from_file(file_path: Union[str, Path]) -> AgentConfig:
     logger.info(f"Loading config from {file_path}")
 
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             config_data = yaml.safe_load(f)
 
         # Validate and create AgentConfig

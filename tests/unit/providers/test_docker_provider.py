@@ -26,7 +26,7 @@ def provider_config():
         system_prompt="You are a helpful AI assistant.",
         max_turns=100,
         api_key="sk-ant-test-key",
-        platform_credentials={}
+        platform_credentials={},
     )
 
 
@@ -45,13 +45,9 @@ def mock_container():
     container.id = "container-abc123"
     container.status = "running"
     container.attrs = {
-        'NetworkSettings': {
-            'Networks': {
-                'agcluster-container_agcluster-network': {
-                    'IPAddress': '172.18.0.5'
-                }
-            },
-            'IPAddress': ''
+        "NetworkSettings": {
+            "Networks": {"agcluster-container_agcluster-network": {"IPAddress": "172.18.0.5"}},
+            "IPAddress": "",
         }
     }
     container.reload = Mock()
@@ -88,7 +84,7 @@ class TestDockerProviderInitialization:
         assert provider._docker_client is None
 
         # Access property should initialize client
-        with patch('docker.from_env') as mock_from_env:
+        with patch("docker.from_env") as mock_from_env:
             mock_client = Mock()
             mock_from_env.return_value = mock_client
 
@@ -102,7 +98,7 @@ class TestDockerProviderInitialization:
         """Test Docker client is only initialized once."""
         provider = DockerProvider()
 
-        with patch('docker.from_env') as mock_from_env:
+        with patch("docker.from_env") as mock_from_env:
             mock_client = Mock()
             mock_from_env.return_value = mock_client
 
@@ -129,10 +125,9 @@ class TestCreateContainer:
         mock_client.containers.run.return_value = mock_container
         provider._docker_client = mock_client
 
-        with patch.object(provider, '_wait_for_health', new_callable=AsyncMock):
+        with patch.object(provider, "_wait_for_health", new_callable=AsyncMock):
             container_info = await provider.create_container(
-                session_id="session-123",
-                config=provider_config
+                session_id="session-123", config=provider_config
             )
 
         # Verify container info
@@ -156,48 +151,45 @@ class TestCreateContainer:
         mock_client.containers.run.return_value = mock_container
         provider._docker_client = mock_client
 
-        with patch.object(provider, '_wait_for_health', new_callable=AsyncMock):
-            await provider.create_container(
-                session_id="session-456",
-                config=provider_config
-            )
+        with patch.object(provider, "_wait_for_health", new_callable=AsyncMock):
+            await provider.create_container(session_id="session-456", config=provider_config)
 
         # Verify Docker API call
         mock_client.containers.run.assert_called_once()
         call_args = mock_client.containers.run.call_args
 
         # Check image
-        assert call_args[1]['image'] == "agcluster/agent:latest"
-        assert call_args[1]['detach'] is True
+        assert call_args[1]["image"] == "agcluster/agent:latest"
+        assert call_args[1]["detach"] is True
 
         # Check network
-        assert call_args[1]['network'] == "test-network"
+        assert call_args[1]["network"] == "test-network"
 
         # Check resource limits
-        assert call_args[1]['mem_limit'] == "4g"
-        assert call_args[1]['cpu_quota'] == 200000
+        assert call_args[1]["mem_limit"] == "4g"
+        assert call_args[1]["cpu_quota"] == 200000
 
         # Check environment
-        env = call_args[1]['environment']
-        assert env['ANTHROPIC_API_KEY'] == "sk-ant-test-key"
-        assert 'AGENT_CONFIG_JSON' in env
+        env = call_args[1]["environment"]
+        assert env["ANTHROPIC_API_KEY"] == "sk-ant-test-key"
+        assert "AGENT_CONFIG_JSON" in env
 
         # Verify agent config JSON
-        config_json = json.loads(env['AGENT_CONFIG_JSON'])
-        assert config_json['id'] == "docker"
-        assert config_json['allowed_tools'] == ["Bash", "Read", "Write", "Grep"]
-        assert config_json['system_prompt'] == "You are a helpful AI assistant."
-        assert config_json['max_turns'] == 100
+        config_json = json.loads(env["AGENT_CONFIG_JSON"])
+        assert config_json["id"] == "docker"
+        assert config_json["allowed_tools"] == ["Bash", "Read", "Write", "Grep"]
+        assert config_json["system_prompt"] == "You are a helpful AI assistant."
+        assert config_json["max_turns"] == 100
 
         # Check security
-        assert call_args[1]['security_opt'] == ["no-new-privileges"]
-        assert call_args[1]['cap_drop'] == ["ALL"]
+        assert call_args[1]["security_opt"] == ["no-new-privileges"]
+        assert call_args[1]["cap_drop"] == ["ALL"]
 
         # Check labels
-        labels = call_args[1]['labels']
-        assert labels['agcluster'] == "true"
-        assert labels['agcluster.session_id'] == "session-456"
-        assert labels['agcluster.provider'] == "docker"
+        labels = call_args[1]["labels"]
+        assert labels["agcluster"] == "true"
+        assert labels["agcluster.session_id"] == "session-456"
+        assert labels["agcluster.provider"] == "docker"
 
     @pytest.mark.asyncio
     async def test_create_container_network_ip_retrieval(self, provider_config):
@@ -207,13 +199,9 @@ class TestCreateContainer:
         mock_container = Mock()
         mock_container.id = "container-xyz"
         mock_container.attrs = {
-            'NetworkSettings': {
-                'Networks': {
-                    'agcluster-container_agcluster-network': {
-                        'IPAddress': '172.18.0.10'
-                    }
-                },
-                'IPAddress': ''
+            "NetworkSettings": {
+                "Networks": {"agcluster-container_agcluster-network": {"IPAddress": "172.18.0.10"}},
+                "IPAddress": "",
             }
         }
         mock_container.reload = Mock()
@@ -222,10 +210,9 @@ class TestCreateContainer:
         mock_client.containers.run.return_value = mock_container
         provider._docker_client = mock_client
 
-        with patch.object(provider, '_wait_for_health', new_callable=AsyncMock):
+        with patch.object(provider, "_wait_for_health", new_callable=AsyncMock):
             container_info = await provider.create_container(
-                session_id="session-net",
-                config=provider_config
+                session_id="session-net", config=provider_config
             )
 
         assert container_info.endpoint_url == "http://172.18.0.10:3000"
@@ -238,22 +225,16 @@ class TestCreateContainer:
 
         mock_container = Mock()
         mock_container.id = "container-fallback"
-        mock_container.attrs = {
-            'NetworkSettings': {
-                'Networks': {},
-                'IPAddress': '172.17.0.2'
-            }
-        }
+        mock_container.attrs = {"NetworkSettings": {"Networks": {}, "IPAddress": "172.17.0.2"}}
         mock_container.reload = Mock()
 
         mock_client = Mock()
         mock_client.containers.run.return_value = mock_container
         provider._docker_client = mock_client
 
-        with patch.object(provider, '_wait_for_health', new_callable=AsyncMock):
+        with patch.object(provider, "_wait_for_health", new_callable=AsyncMock):
             container_info = await provider.create_container(
-                session_id="session-fallback",
-                config=provider_config
+                session_id="session-fallback", config=provider_config
             )
 
         assert container_info.endpoint_url == "http://172.17.0.2:3000"
@@ -265,12 +246,7 @@ class TestCreateContainer:
 
         mock_container = Mock()
         mock_container.id = "container-no-ip"
-        mock_container.attrs = {
-            'NetworkSettings': {
-                'Networks': {},
-                'IPAddress': ''
-            }
-        }
+        mock_container.attrs = {"NetworkSettings": {"Networks": {}, "IPAddress": ""}}
         mock_container.reload = Mock()
 
         mock_client = Mock()
@@ -278,10 +254,7 @@ class TestCreateContainer:
         provider._docker_client = mock_client
 
         with pytest.raises(RuntimeError, match="Failed to get container IP address"):
-            await provider.create_container(
-                session_id="session-no-ip",
-                config=provider_config
-            )
+            await provider.create_container(session_id="session-no-ip", config=provider_config)
 
     @pytest.mark.asyncio
     async def test_create_container_image_not_found(self, provider_config):
@@ -293,10 +266,7 @@ class TestCreateContainer:
         provider._docker_client = mock_client
 
         with pytest.raises(ValueError, match="Agent image not found: agcluster/agent:latest"):
-            await provider.create_container(
-                session_id="session-no-image",
-                config=provider_config
-            )
+            await provider.create_container(session_id="session-no-image", config=provider_config)
 
     @pytest.mark.asyncio
     async def test_create_container_docker_api_error(self, provider_config):
@@ -308,10 +278,7 @@ class TestCreateContainer:
         provider._docker_client = mock_client
 
         with pytest.raises(RuntimeError, match="Failed to create container"):
-            await provider.create_container(
-                session_id="session-api-error",
-                config=provider_config
-            )
+            await provider.create_container(session_id="session-api-error", config=provider_config)
 
     @pytest.mark.asyncio
     async def test_create_container_health_check_timeout(self, provider_config, mock_container):
@@ -322,13 +289,12 @@ class TestCreateContainer:
         mock_client.containers.run.return_value = mock_container
         provider._docker_client = mock_client
 
-        with patch.object(provider, '_wait_for_health', new_callable=AsyncMock) as mock_health:
+        with patch.object(provider, "_wait_for_health", new_callable=AsyncMock) as mock_health:
             mock_health.side_effect = TimeoutError("Health check timeout")
 
             # Should not raise exception, just log warning
             container_info = await provider.create_container(
-                session_id="session-health-timeout",
-                config=provider_config
+                session_id="session-health-timeout", config=provider_config
             )
 
         # Container should still be created
@@ -350,7 +316,7 @@ class TestStopContainer:
             endpoint_url="http://172.18.0.5:3000",
             status="running",
             platform="docker",
-            metadata={"session_id": "session-123"}
+            metadata={"session_id": "session-123"},
         )
 
         mock_client = Mock()
@@ -404,14 +370,14 @@ class TestStopContainer:
             endpoint_url="http://172.18.0.5:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
         provider.active_containers["session-2"] = ContainerInfo(
             container_id="container-2",
             endpoint_url="http://172.18.0.6:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         mock_client = Mock()
@@ -506,7 +472,7 @@ class TestExecuteQuery:
             endpoint_url="http://172.18.0.5:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         # Mock HTTP response with SSE data
@@ -514,9 +480,9 @@ class TestExecuteQuery:
         mock_response.raise_for_status = Mock()
 
         async def mock_aiter_lines():
-            yield "data: {\"type\": \"message\", \"content\": \"Hello\"}"
-            yield "data: {\"type\": \"message\", \"content\": \"World\"}"
-            yield "data: {\"type\": \"complete\", \"status\": \"success\"}"
+            yield 'data: {"type": "message", "content": "Hello"}'
+            yield 'data: {"type": "message", "content": "World"}'
+            yield 'data: {"type": "complete", "status": "success"}'
 
         mock_response.aiter_lines = mock_aiter_lines
 
@@ -530,12 +496,10 @@ class TestExecuteQuery:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             messages = []
             async for message in provider.execute_query(
-                container_info=container_info,
-                query="Hello",
-                conversation_history=[]
+                container_info=container_info, query="Hello", conversation_history=[]
             ):
                 messages.append(message)
 
@@ -555,19 +519,19 @@ class TestExecuteQuery:
             endpoint_url="http://172.18.0.6:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         conversation_history = [
             {"role": "user", "content": "Previous message"},
-            {"role": "assistant", "content": "Previous response"}
+            {"role": "assistant", "content": "Previous response"},
         ]
 
         mock_response = AsyncMock()
         mock_response.raise_for_status = Mock()
 
         async def mock_aiter_lines():
-            yield "data: {\"type\": \"message\", \"content\": \"Response\"}"
+            yield 'data: {"type": "message", "content": "Response"}'
 
         mock_response.aiter_lines = mock_aiter_lines
 
@@ -581,12 +545,12 @@ class TestExecuteQuery:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             messages = []
             async for message in provider.execute_query(
                 container_info=container_info,
                 query="New query",
-                conversation_history=conversation_history
+                conversation_history=conversation_history,
             ):
                 messages.append(message)
 
@@ -608,7 +572,7 @@ class TestExecuteQuery:
             endpoint_url="http://172.18.0.7:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         mock_error_response = Mock()
@@ -616,11 +580,11 @@ class TestExecuteQuery:
 
         mock_response = Mock()
         mock_response.status_code = 500
-        mock_response.raise_for_status = Mock(side_effect=httpx.HTTPStatusError(
-            "Internal Server Error",
-            request=Mock(),
-            response=mock_error_response
-        ))
+        mock_response.raise_for_status = Mock(
+            side_effect=httpx.HTTPStatusError(
+                "Internal Server Error", request=Mock(), response=mock_error_response
+            )
+        )
 
         async def mock_aiter_lines():
             # This won't be called due to raise_for_status
@@ -638,12 +602,10 @@ class TestExecuteQuery:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             messages = []
             async for message in provider.execute_query(
-                container_info=container_info,
-                query="Test",
-                conversation_history=[]
+                container_info=container_info, query="Test", conversation_history=[]
             ):
                 messages.append(message)
 
@@ -662,7 +624,7 @@ class TestExecuteQuery:
             endpoint_url="http://172.18.0.8:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         mock_client = MagicMock()
@@ -670,12 +632,10 @@ class TestExecuteQuery:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             messages = []
             async for message in provider.execute_query(
-                container_info=container_info,
-                query="Test",
-                conversation_history=[]
+                container_info=container_info, query="Test", conversation_history=[]
             ):
                 messages.append(message)
 
@@ -693,16 +653,16 @@ class TestExecuteQuery:
             endpoint_url="http://172.18.0.9:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         mock_response = AsyncMock()
         mock_response.raise_for_status = Mock()
 
         async def mock_aiter_lines():
-            yield "data: {\"type\": \"message\", \"content\": \"Valid\"}"
+            yield 'data: {"type": "message", "content": "Valid"}'
             yield "data: invalid json {{"
-            yield "data: {\"type\": \"message\", \"content\": \"Also valid\"}"
+            yield 'data: {"type": "message", "content": "Also valid"}'
 
         mock_response.aiter_lines = mock_aiter_lines
 
@@ -716,12 +676,10 @@ class TestExecuteQuery:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             messages = []
             async for message in provider.execute_query(
-                container_info=container_info,
-                query="Test",
-                conversation_history=[]
+                container_info=container_info, query="Test", conversation_history=[]
             ):
                 messages.append(message)
 
@@ -740,7 +698,7 @@ class TestExecuteQuery:
             endpoint_url="http://172.18.0.10:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         mock_client = MagicMock()
@@ -748,12 +706,10 @@ class TestExecuteQuery:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             messages = []
             async for message in provider.execute_query(
-                container_info=container_info,
-                query="Test",
-                conversation_history=[]
+                container_info=container_info, query="Test", conversation_history=[]
             ):
                 messages.append(message)
 
@@ -787,14 +743,14 @@ class TestListContainers:
             endpoint_url="http://172.18.0.5:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "agent-1"}
+            metadata={"agent_id": "agent-1"},
         )
         provider.active_containers["session-2"] = ContainerInfo(
             container_id="container-2",
             endpoint_url="http://172.18.0.6:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "agent-2"}
+            metadata={"agent_id": "agent-2"},
         )
 
         containers = await provider.list_containers()
@@ -817,7 +773,7 @@ class TestListContainers:
             endpoint_url="http://172.18.0.5:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         containers1 = await provider.list_containers()
@@ -856,14 +812,14 @@ class TestCleanup:
             endpoint_url="http://172.18.0.5:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
         provider.active_containers["session-2"] = ContainerInfo(
             container_id="container-2",
             endpoint_url="http://172.18.0.6:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         mock_client = Mock()
@@ -891,22 +847,19 @@ class TestCleanup:
             endpoint_url="http://172.18.0.5:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
         provider.active_containers["session-2"] = ContainerInfo(
             container_id="container-2",
             endpoint_url="http://172.18.0.6:3000",
             status="running",
             platform="docker",
-            metadata={}
+            metadata={},
         )
 
         mock_client = Mock()
         # First call fails, second succeeds
-        mock_client.containers.get.side_effect = [
-            Exception("Stop failed"),
-            mock_container
-        ]
+        mock_client.containers.get.side_effect = [Exception("Stop failed"), mock_container]
         provider._docker_client = mock_client
 
         await provider.cleanup()
@@ -921,7 +874,7 @@ class TestCleanup:
         """Test cleanup closes Docker client."""
         provider = DockerProvider()
 
-        with patch('docker.from_env') as mock_from_env:
+        with patch("docker.from_env") as mock_from_env:
             mock_client = Mock()
             mock_from_env.return_value = mock_client
 
@@ -952,7 +905,7 @@ class TestWaitForHealth:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             await provider._wait_for_health("http://172.18.0.5:3000", timeout=5)
 
         # Should have called health endpoint
@@ -974,14 +927,13 @@ class TestWaitForHealth:
         mock_response_success.json.return_value = {"status": "healthy"}
 
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(side_effect=[
-            httpx.RequestError("Connection refused"),
-            mock_response_success
-        ])
+        mock_client.get = AsyncMock(
+            side_effect=[httpx.RequestError("Connection refused"), mock_response_success]
+        )
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             await provider._wait_for_health("http://172.18.0.5:3000", timeout=5)
 
         # Should have called multiple times
@@ -997,7 +949,7 @@ class TestWaitForHealth:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             # Use very short timeout
             with pytest.raises(TimeoutError, match="did not become healthy within"):
                 await provider._wait_for_health("http://172.18.0.5:3000", timeout=1)
@@ -1016,7 +968,7 @@ class TestWaitForHealth:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             # Should timeout because status is not "healthy"
             with pytest.raises(TimeoutError):
                 await provider._wait_for_health("http://172.18.0.5:3000", timeout=1)
@@ -1030,15 +982,15 @@ class TestWaitForHealth:
         mock_response.status_code = 500
 
         mock_client = MagicMock()
-        mock_client.get = AsyncMock(side_effect=httpx.HTTPStatusError(
-            "Internal Server Error",
-            request=Mock(),
-            response=mock_response
-        ))
+        mock_client.get = AsyncMock(
+            side_effect=httpx.HTTPStatusError(
+                "Internal Server Error", request=Mock(), response=mock_response
+            )
+        )
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch('httpx.AsyncClient', return_value=mock_client):
+        with patch("httpx.AsyncClient", return_value=mock_client):
             # Should timeout because health check keeps failing
             with pytest.raises(TimeoutError):
                 await provider._wait_for_health("http://172.18.0.5:3000", timeout=1)

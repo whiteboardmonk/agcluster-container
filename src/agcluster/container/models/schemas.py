@@ -10,8 +10,10 @@ from agcluster.container.models.agent_config import AgentConfig as FullAgentConf
 
 # OpenAI-compatible schemas
 
+
 class ChatMessage(BaseModel):
     """Chat message in OpenAI format"""
+
     role: Literal["system", "user", "assistant"]
     content: str
     name: Optional[str] = None
@@ -19,6 +21,7 @@ class ChatMessage(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     """OpenAI-compatible chat completion request"""
+
     model: str
     messages: List[ChatMessage]
     temperature: Optional[float] = Field(default=1.0, ge=0, le=2)
@@ -32,6 +35,7 @@ class ChatCompletionRequest(BaseModel):
 
 class ChatCompletionChoice(BaseModel):
     """Choice in chat completion response"""
+
     index: int
     message: ChatMessage
     finish_reason: Optional[str] = None
@@ -39,6 +43,7 @@ class ChatCompletionChoice(BaseModel):
 
 class ChatCompletionResponse(BaseModel):
     """OpenAI-compatible chat completion response"""
+
     id: str
     object: Literal["chat.completion"] = "chat.completion"
     created: int
@@ -49,6 +54,7 @@ class ChatCompletionResponse(BaseModel):
 
 class ChatCompletionChunk(BaseModel):
     """Streaming chunk in OpenAI format"""
+
     id: str
     object: Literal["chat.completion.chunk"] = "chat.completion.chunk"
     created: int
@@ -58,8 +64,10 @@ class ChatCompletionChunk(BaseModel):
 
 # AgCluster-specific schemas
 
+
 class AgentConfig(BaseModel):
     """Agent configuration"""
+
     agent_id: str
     api_key: str = Field(..., description="Anthropic API key")
     system_prompt: Optional[str] = None
@@ -70,6 +78,7 @@ class AgentConfig(BaseModel):
 
 class AgentInfo(BaseModel):
     """Agent information"""
+
     agent_id: str
     container_id: Optional[str] = None
     status: Literal["creating", "running", "stopped", "error"]
@@ -79,6 +88,7 @@ class AgentInfo(BaseModel):
 
 class AgentCreateRequest(BaseModel):
     """Request to create a new agent"""
+
     api_key: str = Field(..., description="Anthropic API key (BYOK)")
     system_prompt: Optional[str] = None
     allowed_tools: Optional[List[str]] = None
@@ -87,6 +97,7 @@ class AgentCreateRequest(BaseModel):
 
 class AgentCreateResponse(BaseModel):
     """Response after creating agent"""
+
     agent_id: str
     status: str
     message: str
@@ -94,12 +105,16 @@ class AgentCreateResponse(BaseModel):
 
 # New schemas for config-based agent launch
 
+
 class LaunchRequest(BaseModel):
     """Request to launch agent from configuration"""
+
     api_key: str = Field(..., description="Anthropic API key (BYOK)")
     config_id: Optional[str] = Field(None, description="ID of saved configuration to use")
     config: Optional[FullAgentConfig] = Field(None, description="Inline configuration")
-    provider: Optional[str] = Field(None, description="Container provider (docker, fly_machines, cloudflare, vercel)")
+    provider: Optional[str] = Field(
+        None, description="Container provider (docker, fly_machines, cloudflare, vercel)"
+    )
 
     def validate_config_or_id(self):
         """Ensure either config_id or config is provided"""
@@ -110,6 +125,7 @@ class LaunchRequest(BaseModel):
 
 class LaunchResponse(BaseModel):
     """Response after launching agent"""
+
     session_id: str = Field(..., description="Session ID for chat operations")
     agent_id: str = Field(..., description="Container agent ID")
     config_id: str = Field(..., description="Config ID used (inline-* for inline configs)")
@@ -119,6 +135,7 @@ class LaunchResponse(BaseModel):
 
 class SessionInfo(BaseModel):
     """Information about an active session"""
+
     session_id: str
     agent_id: str
     config_id: str
@@ -130,12 +147,14 @@ class SessionInfo(BaseModel):
 
 class SessionListResponse(BaseModel):
     """Response containing list of active sessions"""
+
     sessions: List[SessionInfo]
     total: int
 
 
 class ConfigInfo(BaseModel):
     """Summary information about an agent configuration"""
+
     id: str
     name: str
     description: Optional[str] = None
@@ -148,5 +167,6 @@ class ConfigInfo(BaseModel):
 
 class ConfigListResponse(BaseModel):
     """Response containing list of available configurations"""
+
     configs: List[ConfigInfo]
     total: int

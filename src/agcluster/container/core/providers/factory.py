@@ -63,8 +63,7 @@ class ProviderFactory:
         if platform not in cls._providers:
             available = ", ".join(cls._providers.keys())
             raise ValueError(
-                f"Unknown provider platform: {platform}. "
-                f"Available providers: {available}"
+                f"Unknown provider platform: {platform}. " f"Available providers: {available}"
             )
 
         provider_class = cls._providers[platform]

@@ -32,8 +32,7 @@ def claude_message_to_openai_text(message: Dict[str, Any]) -> str:
 
 
 async def stream_to_openai_sse(
-    container_stream: AsyncIterator[Dict[str, Any]],
-    model: str
+    container_stream: AsyncIterator[Dict[str, Any]], model: str
 ) -> AsyncIterator[str]:
     """
     Convert Claude SDK container stream to OpenAI SSE format
@@ -67,14 +66,13 @@ async def stream_to_openai_sse(
                         "object": "chat.completion.chunk",
                         "created": created_timestamp,
                         "model": model,
-                        "choices": [{
-                            "index": 0,
-                            "delta": {
-                                "role": "assistant",
-                                "content": content
-                            },
-                            "finish_reason": None
-                        }]
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {"role": "assistant", "content": content},
+                                "finish_reason": None,
+                            }
+                        ],
                     }
 
                     yield f"data: {json.dumps(chunk)}\n\n"
@@ -85,19 +83,13 @@ async def stream_to_openai_sse(
                 # Send as Vercel AI SDK data-tool part
                 # Format: data: {"type":"data-tool","data":{...}}
                 # The UI can process this through useChat's onToolCall or custom data handlers
-                data_part = {
-                    "type": "data-tool",
-                    "data": data
-                }
+                data_part = {"type": "data-tool", "data": data}
                 yield f"data: {json.dumps(data_part)}\n\n"
 
             # Stream todo updates for task list panel
             elif msg_type == "todo_update":
                 # Send as Vercel AI SDK data-todo part
-                data_part = {
-                    "type": "data-todo",
-                    "data": data
-                }
+                data_part = {"type": "data-todo", "data": data}
                 yield f"data: {json.dumps(data_part)}\n\n"
 
             # Skip metadata and system messages in streaming
@@ -110,11 +102,7 @@ async def stream_to_openai_sse(
                 "object": "chat.completion.chunk",
                 "created": created_timestamp,
                 "model": model,
-                "choices": [{
-                    "index": 0,
-                    "delta": {},
-                    "finish_reason": "stop"
-                }]
+                "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
             }
 
             yield f"data: {json.dumps(chunk)}\n\n"
@@ -130,13 +118,13 @@ async def stream_to_openai_sse(
                 "object": "chat.completion.chunk",
                 "created": created_timestamp,
                 "model": model,
-                "choices": [{
-                    "index": 0,
-                    "delta": {
-                        "content": f"\n\n[Error: {error_msg}]\n"
-                    },
-                    "finish_reason": "error"
-                }]
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"content": f"\n\n[Error: {error_msg}]\n"},
+                        "finish_reason": "error",
+                    }
+                ],
             }
 
             yield f"data: {json.dumps(error_chunk)}\n\n"
@@ -145,9 +133,7 @@ async def stream_to_openai_sse(
 
 
 def create_openai_completion_response(
-    content: str,
-    model: str,
-    usage: Dict[str, int] = None
+    content: str, model: str, usage: Dict[str, int] = None
 ) -> Dict[str, Any]:
     """
     Create OpenAI-compatible completion response (non-streaming)
@@ -161,17 +147,13 @@ def create_openai_completion_response(
         OpenAI-compatible response dict
     """
     # Use real usage if provided, otherwise default to 0
-    usage_data = {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0
-    }
+    usage_data = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     if usage:
         usage_data = {
             "prompt_tokens": usage.get("input_tokens", 0),
             "completion_tokens": usage.get("output_tokens", 0),
-            "total_tokens": usage.get("total_tokens", 0)
+            "total_tokens": usage.get("total_tokens", 0),
         }
 
     return {
@@ -179,20 +161,19 @@ def create_openai_completion_response(
         "object": "chat.completion",
         "created": int(time.time()),
         "model": model,
-        "choices": [{
-            "index": 0,
-            "message": {
-                "role": "assistant",
-                "content": content
-            },
-            "finish_reason": "stop"
-        }],
-        "usage": usage_data
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": usage_data,
     }
 
 
 async def stream_claude_events(
-    container_stream: AsyncIterator[Dict[str, Any]]
+    container_stream: AsyncIterator[Dict[str, Any]],
 ) -> AsyncIterator[str]:
     """
     Stream Claude SDK events in their native format (for Edge route transformation)
@@ -215,29 +196,19 @@ async def stream_claude_events(
             msg_type = data.get("type")
 
             # Stream all message types with their data
-            event_data = {
-                "type": message_type,
-                "msg_type": msg_type,
-                "data": data
-            }
+            event_data = {"type": message_type, "msg_type": msg_type, "data": data}
             yield f"data: {json.dumps(event_data)}\n\n"
 
         elif message_type == "complete":
             # Send completion event
-            event_data = {
-                "type": "complete",
-                "status": message.get("status", "success")
-            }
+            event_data = {"type": "complete", "status": message.get("status", "success")}
             yield f"data: {json.dumps(event_data)}\n\n"
             yield "data: [DONE]\n\n"
             break
 
         elif message_type == "error":
             # Send error event
-            event_data = {
-                "type": "error",
-                "message": message.get("message", "Unknown error")
-            }
+            event_data = {"type": "error", "message": message.get("message", "Unknown error")}
             yield f"data: {json.dumps(event_data)}\n\n"
             yield "data: [DONE]\n\n"
             break

@@ -23,13 +23,11 @@ class TestAgentContainer:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"}
+            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"},
         )
 
         container = AgentContainer(
-            container_info=container_info,
-            config_id="test-config",
-            config=None
+            container_info=container_info, config_id="test-config", config=None
         )
 
         assert container.agent_id == "test-123"
@@ -47,7 +45,7 @@ class TestAgentContainer:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"}
+            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"},
         )
 
         container = AgentContainer(container_info=container_info)
@@ -57,7 +55,7 @@ class TestAgentContainer:
             yield {"type": "message", "data": {"content": "Hello"}}
             yield {"type": "complete", "status": "success"}
 
-        with patch('agcluster.container.core.container_manager.container_manager') as mock_mgr:
+        with patch("agcluster.container.core.container_manager.container_manager") as mock_mgr:
             mock_mgr.provider.execute_query = mock_execute_query
 
             responses = []
@@ -77,7 +75,7 @@ class TestAgentContainer:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"}
+            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"},
         )
 
         container = AgentContainer(container_info=container_info)
@@ -87,7 +85,7 @@ class TestAgentContainer:
             raise Exception("Connection failed")
             yield  # This line makes it an async generator (never reached)
 
-        with patch('agcluster.container.core.container_manager.container_manager') as mock_mgr:
+        with patch("agcluster.container.core.container_manager.container_manager") as mock_mgr:
             mock_mgr.provider.execute_query = mock_execute_query_error
 
             responses = []
@@ -106,7 +104,7 @@ class TestAgentContainer:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"}
+            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"},
         )
 
         container = AgentContainer(container_info=container_info)
@@ -120,7 +118,7 @@ class TestAgentContainer:
             yield {"type": "message", "data": {"content": "Test"}}
             yield {"type": "complete", "status": "success"}
 
-        with patch('agcluster.container.core.container_manager.container_manager') as mock_mgr:
+        with patch("agcluster.container.core.container_manager.container_manager") as mock_mgr:
             mock_mgr.provider.execute_query = mock_execute_query
 
             async for _ in container.query("Test"):
@@ -135,7 +133,9 @@ class TestContainerManagerInitialization:
 
     def test_default_provider(self):
         """Test that ContainerManager initializes with default provider."""
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider') as mock_create:
+        with patch(
+            "agcluster.container.core.container_manager.ProviderFactory.create_provider"
+        ) as mock_create:
             mock_provider = Mock()
             mock_create.return_value = mock_provider
 
@@ -146,7 +146,9 @@ class TestContainerManagerInitialization:
 
     def test_specific_provider(self):
         """Test initializing with specific provider."""
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider') as mock_create:
+        with patch(
+            "agcluster.container.core.container_manager.ProviderFactory.create_provider"
+        ) as mock_create:
             mock_provider = Mock()
             mock_create.return_value = mock_provider
 
@@ -170,18 +172,19 @@ class TestCreateAgentContainer:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "agent-123", "container_ip": "172.17.0.2"}
+            metadata={"agent_id": "agent-123", "container_ip": "172.17.0.2"},
         )
 
         mock_provider.create_container = AsyncMock(return_value=container_info)
 
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider', return_value=mock_provider):
+        with patch(
+            "agcluster.container.core.container_manager.ProviderFactory.create_provider",
+            return_value=mock_provider,
+        ):
             manager = ContainerManager()
 
             container = await manager.create_agent_container(
-                api_key="sk-ant-test-key",
-                system_prompt="Test prompt",
-                allowed_tools="Bash,Read"
+                api_key="sk-ant-test-key", system_prompt="Test prompt", allowed_tools="Bash,Read"
             )
 
         assert isinstance(container, AgentContainer)
@@ -203,24 +206,23 @@ class TestCreateAgentContainer:
             endpoint_url="http://172.17.0.3:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "agent-456", "container_ip": "172.17.0.3"}
+            metadata={"agent_id": "agent-456", "container_ip": "172.17.0.3"},
         )
 
         mock_provider.create_container = AsyncMock(return_value=container_info)
 
         config = AgentConfig(
-            id="test-config",
-            name="Test Config",
-            allowed_tools=["Bash", "Read", "Write"]
+            id="test-config", name="Test Config", allowed_tools=["Bash", "Read", "Write"]
         )
 
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider', return_value=mock_provider):
+        with patch(
+            "agcluster.container.core.container_manager.ProviderFactory.create_provider",
+            return_value=mock_provider,
+        ):
             manager = ContainerManager()
 
             container = await manager.create_agent_container_from_config(
-                api_key="sk-ant-test-key",
-                config=config,
-                config_id="test-config"
+                api_key="sk-ant-test-key", config=config, config_id="test-config"
             )
 
         assert isinstance(container, AgentContainer)
@@ -244,10 +246,13 @@ class TestStopContainer:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"}
+            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"},
         )
 
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider', return_value=mock_provider):
+        with patch(
+            "agcluster.container.core.container_manager.ProviderFactory.create_provider",
+            return_value=mock_provider,
+        ):
             manager = ContainerManager()
 
             # Add container to active containers
@@ -264,7 +269,10 @@ class TestStopContainer:
         """Test stopping container that doesn't exist in tracking."""
         mock_provider = Mock()
 
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider', return_value=mock_provider):
+        with patch(
+            "agcluster.container.core.container_manager.ProviderFactory.create_provider",
+            return_value=mock_provider,
+        ):
             manager = ContainerManager()
 
             # Should not raise
@@ -281,10 +289,13 @@ class TestStopContainer:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"}
+            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"},
         )
 
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider', return_value=mock_provider):
+        with patch(
+            "agcluster.container.core.container_manager.ProviderFactory.create_provider",
+            return_value=mock_provider,
+        ):
             manager = ContainerManager()
 
             agent_container = AgentContainer(container_info=container_info)
@@ -307,10 +318,10 @@ class TestContainerLookup:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"}
+            metadata={"agent_id": "test-123", "container_ip": "172.17.0.2"},
         )
 
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider'):
+        with patch("agcluster.container.core.container_manager.ProviderFactory.create_provider"):
             manager = ContainerManager()
             agent_container = AgentContainer(container_info=container_info)
             manager.active_containers["test-123"] = agent_container
@@ -320,7 +331,7 @@ class TestContainerLookup:
 
     def test_get_container_not_exists(self):
         """Test getting non-existent container."""
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider'):
+        with patch("agcluster.container.core.container_manager.ProviderFactory.create_provider"):
             manager = ContainerManager()
 
             result = manager.get_container("nonexistent")
@@ -333,7 +344,7 @@ class TestContainerLookup:
             endpoint_url="http://172.17.0.2:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "test-1", "container_ip": "172.17.0.2"}
+            metadata={"agent_id": "test-1", "container_ip": "172.17.0.2"},
         )
 
         container_info2 = ContainerInfo(
@@ -341,10 +352,10 @@ class TestContainerLookup:
             endpoint_url="http://172.17.0.3:3000",
             status="running",
             platform="docker",
-            metadata={"agent_id": "test-2", "container_ip": "172.17.0.3"}
+            metadata={"agent_id": "test-2", "container_ip": "172.17.0.3"},
         )
 
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider'):
+        with patch("agcluster.container.core.container_manager.ProviderFactory.create_provider"):
             manager = ContainerManager()
 
             container1 = AgentContainer(container_info=container_info1)
@@ -360,7 +371,7 @@ class TestContainerLookup:
 
     def test_list_containers_empty(self):
         """Test listing when no containers exist."""
-        with patch('agcluster.container.core.container_manager.ProviderFactory.create_provider'):
+        with patch("agcluster.container.core.container_manager.ProviderFactory.create_provider"):
             manager = ContainerManager()
 
             containers = manager.list_containers()

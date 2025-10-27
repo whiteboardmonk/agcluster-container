@@ -40,11 +40,7 @@ class DockerProvider(ContainerProvider):
             self._docker_client = docker.from_env()
         return self._docker_client
 
-    async def create_container(
-        self,
-        session_id: str,
-        config: ProviderConfig
-    ) -> ContainerInfo:
+    async def create_container(self, session_id: str, config: ProviderConfig) -> ContainerInfo:
         """
         Create a new Docker container for the agent.
 
@@ -68,21 +64,23 @@ class DockerProvider(ContainerProvider):
             # Prepare environment
             # Handle system_prompt which can be str or SystemPromptPreset (Pydantic model)
             system_prompt_value = config.system_prompt
-            if hasattr(system_prompt_value, 'model_dump'):
+            if hasattr(system_prompt_value, "model_dump"):
                 # It's a Pydantic model (SystemPromptPreset), convert to dict
                 system_prompt_value = system_prompt_value.model_dump()
 
             env = {
                 "AGENT_ID": agent_id,
                 "ANTHROPIC_API_KEY": config.api_key,
-                "AGENT_CONFIG_JSON": json.dumps({
-                    "id": config.platform,
-                    "name": f"Agent {agent_id}",
-                    "allowed_tools": config.allowed_tools,
-                    "system_prompt": system_prompt_value,
-                    "permission_mode": "acceptEdits",
-                    "max_turns": config.max_turns
-                })
+                "AGENT_CONFIG_JSON": json.dumps(
+                    {
+                        "id": config.platform,
+                        "name": f"Agent {agent_id}",
+                        "allowed_tools": config.allowed_tools,
+                        "system_prompt": system_prompt_value,
+                        "permission_mode": "acceptEdits",
+                        "max_turns": config.max_turns,
+                    }
+                ),
             }
 
             # Create container
@@ -90,36 +88,25 @@ class DockerProvider(ContainerProvider):
                 image="agcluster/agent:latest",
                 name=container_name,
                 detach=True,
-
                 # Environment
                 environment=env,
-
                 # Network
                 network=self.network_name,
-
                 # Resource limits from config
                 mem_limit=config.memory_limit,
                 cpu_quota=config.cpu_quota,
-
                 # Security
                 security_opt=["no-new-privileges"],
                 cap_drop=["ALL"],
-
                 # Volume for workspace
-                volumes={
-                    f"agcluster-workspace-{agent_id}": {
-                        'bind': '/workspace',
-                        'mode': 'rw'
-                    }
-                },
-
+                volumes={f"agcluster-workspace-{agent_id}": {"bind": "/workspace", "mode": "rw"}},
                 # Labels
                 labels={
                     "agcluster": "true",
                     "agcluster.session_id": session_id,
                     "agcluster.agent_id": agent_id,
-                    "agcluster.provider": "docker"
-                }
+                    "agcluster.provider": "docker",
+                },
             )
 
             # Wait for container to be ready
@@ -128,11 +115,11 @@ class DockerProvider(ContainerProvider):
 
             # Get container IP
             container.reload()
-            networks = container.attrs['NetworkSettings']['Networks']
+            networks = container.attrs["NetworkSettings"]["Networks"]
             if networks:
-                container_ip = list(networks.values())[0]['IPAddress']
+                container_ip = list(networks.values())[0]["IPAddress"]
             else:
-                container_ip = container.attrs['NetworkSettings']['IPAddress']
+                container_ip = container.attrs["NetworkSettings"]["IPAddress"]
 
             if not container_ip:
                 raise RuntimeError("Failed to get container IP address")
@@ -148,6 +135,7 @@ class DockerProvider(ContainerProvider):
 
             # Create container info with API key hash for session ownership validation
             import hashlib
+
             api_key_hash = hashlib.sha256(config.api_key.encode()).hexdigest()
 
             container_info = ContainerInfo(
@@ -160,8 +148,8 @@ class DockerProvider(ContainerProvider):
                     "agent_id": agent_id,
                     "session_id": session_id,
                     "container_ip": container_ip,
-                    "api_key_hash": api_key_hash  # For session ownership validation
-                }
+                    "api_key_hash": api_key_hash,  # For session ownership validation
+                },
             )
 
             self.active_containers[session_id] = container_info
@@ -234,10 +222,7 @@ class DockerProvider(ContainerProvider):
             return "error"
 
     async def execute_query(
-        self,
-        container_info: ContainerInfo,
-        query: str,
-        conversation_history: list[Dict[str, Any]]
+        self, container_info: ContainerInfo, query: str, conversation_history: list[Dict[str, Any]]
     ) -> AsyncIterator[Dict[str, Any]]:
         """
         Execute query via HTTP/SSE.
@@ -260,7 +245,7 @@ class DockerProvider(ContainerProvider):
                     "POST",
                     url,
                     json={"query": query, "history": conversation_history},
-                    headers={"Accept": "text/event-stream"}
+                    headers={"Accept": "text/event-stream"},
                 ) as response:
                     response.raise_for_status()
 
@@ -276,22 +261,13 @@ class DockerProvider(ContainerProvider):
 
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error querying container: {e}")
-            yield {
-                "type": "error",
-                "message": f"HTTP error: {e.response.status_code}"
-            }
+            yield {"type": "error", "message": f"HTTP error: {e.response.status_code}"}
         except httpx.RequestError as e:
             logger.error(f"Request error querying container: {e}")
-            yield {
-                "type": "error",
-                "message": f"Request error: {str(e)}"
-            }
+            yield {"type": "error", "message": f"Request error: {str(e)}"}
         except Exception as e:
             logger.error(f"Unexpected error querying container: {e}")
-            yield {
-                "type": "error",
-                "message": f"Unexpected error: {str(e)}"
-            }
+            yield {"type": "error", "message": f"Unexpected error: {str(e)}"}
 
     async def list_containers(self) -> list[ContainerInfo]:
         """
@@ -308,7 +284,9 @@ class DockerProvider(ContainerProvider):
 
         Stops all active containers and closes Docker client.
         """
-        logger.info(f"Cleaning up Docker provider ({len(self.active_containers)} active containers)")
+        logger.info(
+            f"Cleaning up Docker provider ({len(self.active_containers)} active containers)"
+        )
 
         # Stop all active containers
         for session_id, container_info in list(self.active_containers.items()):

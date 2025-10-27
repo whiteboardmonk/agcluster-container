@@ -6,7 +6,7 @@ from agcluster.container.core.config_loader import (
     load_config_from_file,
     load_config_from_id,
     list_available_configs,
-    ConfigNotFoundError
+    ConfigNotFoundError,
 )
 from agcluster.container.models.agent_config import AgentConfig
 
@@ -17,13 +17,9 @@ class TestLoadConfigFromFile:
     def test_load_valid_yaml(self, tmp_path):
         """Test loading valid YAML configuration"""
         config_file = tmp_path / "test-config.yaml"
-        config_data = {
-            "id": "test-agent",
-            "name": "Test Agent",
-            "allowed_tools": ["Bash", "Read"]
-        }
+        config_data = {"id": "test-agent", "name": "Test Agent", "allowed_tools": ["Bash", "Read"]}
 
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
 
         config = load_config_from_file(config_file)
@@ -44,12 +40,12 @@ class TestLoadConfigFromFile:
                 "frontend": {
                     "description": "Frontend dev",
                     "prompt": "You are a frontend specialist",
-                    "tools": ["Read", "Write"]
+                    "tools": ["Read", "Write"],
                 }
-            }
+            },
         }
 
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
 
         config = load_config_from_file(config_file)
@@ -61,7 +57,7 @@ class TestLoadConfigFromFile:
         """Test loading invalid YAML raises error"""
         config_file = tmp_path / "invalid.yaml"
 
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             f.write("invalid: yaml: content:")
 
         with pytest.raises(yaml.YAMLError):
@@ -78,10 +74,10 @@ class TestLoadConfigFromFile:
         config_data = {
             "id": "test",
             "name": "Test",
-            "allowed_tools": ["InvalidTool"]  # Invalid tool name
+            "allowed_tools": ["InvalidTool"],  # Invalid tool name
         }
 
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
 
         with pytest.raises(ValueError):
@@ -135,10 +131,10 @@ class TestLoadConfigFromId:
         config_data = {
             "id": "my-agent",
             "name": "My Custom Agent",
-            "allowed_tools": ["Read", "Write"]
+            "allowed_tools": ["Read", "Write"],
         }
 
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
 
         # Pass user_config_dir explicitly
@@ -169,13 +165,9 @@ class TestListAvailableConfigs:
 
         # Create user config
         config_file = user_config_dir / "custom.yaml"
-        config_data = {
-            "id": "custom",
-            "name": "Custom",
-            "allowed_tools": ["Bash"]
-        }
+        config_data = {"id": "custom", "name": "Custom", "allowed_tools": ["Bash"]}
 
-        with open(config_file, 'w') as f:
+        with open(config_file, "w") as f:
             yaml.dump(config_data, f)
 
         # Pass user_config_dir explicitly
@@ -200,12 +192,12 @@ class TestListAvailableConfigs:
 
         # Valid config
         valid_file = preset_dir / "valid.yaml"
-        with open(valid_file, 'w') as f:
+        with open(valid_file, "w") as f:
             yaml.dump({"id": "valid", "name": "Valid"}, f)
 
         # Invalid config
         invalid_file = preset_dir / "invalid.yaml"
-        with open(invalid_file, 'w') as f:
+        with open(invalid_file, "w") as f:
             f.write("invalid yaml content::")
 
         # Should only return valid configs, skip invalid

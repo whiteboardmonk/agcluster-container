@@ -11,7 +11,7 @@ from agcluster.container.models.schemas import (
     LaunchRequest,
     LaunchResponse,
     SessionInfo,
-    SessionListResponse
+    SessionListResponse,
 )
 from agcluster.container.core.session_manager import session_manager, SessionNotFoundError
 
@@ -33,6 +33,7 @@ async def list_agents():
 
 
 # New config-based endpoints (MUST come before /{agent_id} catch-all)
+
 
 @router.post("/launch", response_model=LaunchResponse)
 async def launch_agent(request: LaunchRequest):
@@ -67,8 +68,7 @@ async def launch_agent(request: LaunchRequest):
         # Validate request
         if not request.config_id and not request.config:
             raise HTTPException(
-                status_code=400,
-                detail="Either config_id or config must be provided"
+                status_code=400, detail="Either config_id or config must be provided"
             )
 
         # Generate conversation ID (used as session key)
@@ -80,7 +80,7 @@ async def launch_agent(request: LaunchRequest):
             api_key=request.api_key,
             config_id=request.config_id,
             config=request.config,
-            provider=request.provider
+            provider=request.provider,
         )
 
         return LaunchResponse(
@@ -88,7 +88,7 @@ async def launch_agent(request: LaunchRequest):
             agent_id=agent_container.agent_id,
             config_id=agent_container.config_id,
             status="running",
-            message=f"Agent launched successfully from config {agent_container.config_id}"
+            message=f"Agent launched successfully from config {agent_container.config_id}",
         )
 
     except ValueError as e:
@@ -110,19 +110,18 @@ async def list_sessions():
 
         sessions_list = []
         for session_id, session_data in sessions_dict.items():
-            sessions_list.append(SessionInfo(
-                session_id=session_data["session_id"],
-                agent_id=session_data["agent_id"],
-                config_id=session_data["config_id"],
-                status="running",  # Could be enhanced to check actual container status
-                created_at=session_data["created_at"],
-                last_active=session_data["last_active"]
-            ))
+            sessions_list.append(
+                SessionInfo(
+                    session_id=session_data["session_id"],
+                    agent_id=session_data["agent_id"],
+                    config_id=session_data["config_id"],
+                    status="running",  # Could be enhanced to check actual container status
+                    created_at=session_data["created_at"],
+                    last_active=session_data["last_active"],
+                )
+            )
 
-        return SessionListResponse(
-            sessions=sessions_list,
-            total=len(sessions_list)
-        )
+        return SessionListResponse(sessions=sessions_list, total=len(sessions_list))
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to list sessions: {str(e)}")
@@ -149,7 +148,7 @@ async def get_session(session_id: str):
             status="running",
             created_at=agent_container.created_at,
             last_active=agent_container.last_active,
-            config=None  # Exclude config to avoid serialization issues
+            config=None,  # Exclude config to avoid serialization issues
         )
 
     except SessionNotFoundError as e:
@@ -172,17 +171,11 @@ async def stop_session(session_id: str):
     try:
         await session_manager.cleanup_session(session_id)
 
-        return {
-            "status": "success",
-            "message": f"Session {session_id} stopped and removed"
-        }
+        return {"status": "success", "message": f"Session {session_id} stopped and removed"}
 
     except Exception:
         # Session might not exist, but that's okay
-        return {
-            "status": "success",
-            "message": f"Session {session_id} stopped (or did not exist)"
-        }
+        return {"status": "success", "message": f"Session {session_id} stopped (or did not exist)"}
 
 
 @router.post("/sessions/{session_id}/interrupt")
@@ -203,6 +196,7 @@ async def interrupt_session(session_id: str):
 
         # Send interrupt message via HTTP (agent server now uses HTTP/SSE on port 3000)
         import httpx
+
         endpoint_url = agent_container.container_info.endpoint_url
         interrupt_url = f"{endpoint_url}/interrupt"
 
@@ -210,10 +204,7 @@ async def interrupt_session(session_id: str):
             response = await client.post(interrupt_url, timeout=5.0)
             response.raise_for_status()
 
-        return {
-            "status": "success",
-            "message": f"Interrupt signal sent to session {session_id}"
-        }
+        return {"status": "success", "message": f"Interrupt signal sent to session {session_id}"}
 
     except SessionNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -222,6 +213,7 @@ async def interrupt_session(session_id: str):
 
 
 # Generic catch-all routes (MUST come AFTER specific routes)
+
 
 @router.get("/{agent_id}", response_model=AgentInfo)
 async def get_agent(agent_id: str):

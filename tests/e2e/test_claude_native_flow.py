@@ -33,10 +33,7 @@ async def test_session(api_key):
         # Launch session with code-assistant config
         response = await client.post(
             f"{API_BASE_URL}/api/agents/launch",
-            json={
-                "api_key": api_key,
-                "config_id": "code-assistant"
-            }
+            json={"api_key": api_key, "config_id": "code-assistant"},
         )
 
         assert response.status_code == 200, f"Failed to launch session: {response.text}"
@@ -62,16 +59,16 @@ async def parse_sse_stream(response: httpx.Response) -> AsyncIterator[dict]:
     buffer = ""
 
     async for chunk in response.aiter_bytes():
-        buffer += chunk.decode('utf-8')
+        buffer += chunk.decode("utf-8")
 
-        while '\n' in buffer:
-            line, buffer = buffer.split('\n', 1)
+        while "\n" in buffer:
+            line, buffer = buffer.split("\n", 1)
             line = line.strip()
 
-            if not line or line == 'data: [DONE]':
+            if not line or line == "data: [DONE]":
                 continue
 
-            if line.startswith('data: {'):
+            if line.startswith("data: {"):
                 try:
                     event = json.loads(line[6:])  # Remove 'data: ' prefix
                     yield event
@@ -121,10 +118,7 @@ async def test_launch_session(api_key):
     async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.post(
             f"{API_BASE_URL}/api/agents/launch",
-            json={
-                "api_key": api_key,
-                "config_id": "code-assistant"
-            }
+            json={"api_key": api_key, "config_id": "code-assistant"},
         )
 
         assert response.status_code == 200, f"Failed to launch: {response.text}"
@@ -153,16 +147,13 @@ async def test_simple_chat_message(api_key, test_session):
     async with httpx.AsyncClient(timeout=120.0) as client:
         response = await client.post(
             f"{API_BASE_URL}/api/agents/chat",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "X-Session-ID": session_id
-            },
+            headers={"Authorization": f"Bearer {api_key}", "X-Session-ID": session_id},
             json={
                 "messages": [
                     {"role": "user", "content": "Hello! Please respond with 'Hello, I am Claude.'"}
                 ],
-                "sessionId": session_id
-            }
+                "sessionId": session_id,
+            },
         )
 
         assert response.status_code == 200
@@ -205,16 +196,16 @@ async def test_tool_execution_events(api_key, test_session):
     async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{API_BASE_URL}/api/agents/chat",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "X-Session-ID": session_id
-            },
+            headers={"Authorization": f"Bearer {api_key}", "X-Session-ID": session_id},
             json={
                 "messages": [
-                    {"role": "user", "content": "Create a file called test.txt with the content 'Hello World'"}
+                    {
+                        "role": "user",
+                        "content": "Create a file called test.txt with the content 'Hello World'",
+                    }
                 ],
-                "sessionId": session_id
-            }
+                "sessionId": session_id,
+            },
         )
 
         assert response.status_code == 200
@@ -230,14 +221,18 @@ async def test_tool_execution_events(api_key, test_session):
             msg_type = event.get("msg_type")
             if msg_type in ["tool_start", "tool_use", "tool_complete"]:
                 tool_events.append(event)
-                print(f"  Tool event: {msg_type} - {event.get('data', {}).get('tool_name', 'unknown')}")
+                print(
+                    f"  Tool event: {msg_type} - {event.get('data', {}).get('tool_name', 'unknown')}"
+                )
 
         # Verify we got tool execution events
         assert len(tool_events) > 0, "No tool execution events received"
 
         # Verify tool types
         tool_names = [e.get("data", {}).get("tool_name") for e in tool_events]
-        assert "Write" in tool_names or "Bash" in tool_names, f"Expected Write or Bash tool, got: {tool_names}"
+        assert (
+            "Write" in tool_names or "Bash" in tool_names
+        ), f"Expected Write or Bash tool, got: {tool_names}"
 
         print("\n✓ Tool execution test passed")
         print(f"  Total events: {len(events)}")
@@ -254,16 +249,16 @@ async def test_todo_events(api_key, test_session):
     async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{API_BASE_URL}/api/agents/chat",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "X-Session-ID": session_id
-            },
+            headers={"Authorization": f"Bearer {api_key}", "X-Session-ID": session_id},
             json={
                 "messages": [
-                    {"role": "user", "content": "Create 3 files: data.json, config.yaml, and readme.md. Track your progress with todos."}
+                    {
+                        "role": "user",
+                        "content": "Create 3 files: data.json, config.yaml, and readme.md. Track your progress with todos.",
+                    }
                 ],
-                "sessionId": session_id
-            }
+                "sessionId": session_id,
+            },
         )
 
         assert response.status_code == 200
@@ -302,16 +297,16 @@ async def test_thinking_events(api_key, test_session):
     async with httpx.AsyncClient(timeout=180.0) as client:
         response = await client.post(
             f"{API_BASE_URL}/api/agents/chat",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "X-Session-ID": session_id
-            },
+            headers={"Authorization": f"Bearer {api_key}", "X-Session-ID": session_id},
             json={
                 "messages": [
-                    {"role": "user", "content": "Solve this problem step by step: What is 15% of 240?"}
+                    {
+                        "role": "user",
+                        "content": "Solve this problem step by step: What is 15% of 240?",
+                    }
                 ],
-                "sessionId": session_id
-            }
+                "sessionId": session_id,
+            },
         )
 
         assert response.status_code == 200
@@ -349,16 +344,11 @@ async def test_session_persistence(api_key, test_session):
         # First message
         response1 = await client.post(
             f"{API_BASE_URL}/api/agents/chat",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "X-Session-ID": session_id
-            },
+            headers={"Authorization": f"Bearer {api_key}", "X-Session-ID": session_id},
             json={
-                "messages": [
-                    {"role": "user", "content": "Remember this number: 42"}
-                ],
-                "sessionId": session_id
-            }
+                "messages": [{"role": "user", "content": "Remember this number: 42"}],
+                "sessionId": session_id,
+            },
         )
 
         assert response1.status_code == 200
@@ -370,18 +360,15 @@ async def test_session_persistence(api_key, test_session):
         # Second message - test context retention
         response2 = await client.post(
             f"{API_BASE_URL}/api/agents/chat",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "X-Session-ID": session_id
-            },
+            headers={"Authorization": f"Bearer {api_key}", "X-Session-ID": session_id},
             json={
                 "messages": [
                     {"role": "user", "content": "Remember this number: 42"},
                     {"role": "assistant", "content": "I'll remember that the number is 42."},
-                    {"role": "user", "content": "What number did I ask you to remember?"}
+                    {"role": "user", "content": "What number did I ask you to remember?"},
                 ],
-                "sessionId": session_id
-            }
+                "sessionId": session_id,
+            },
         )
 
         assert response2.status_code == 200
@@ -413,16 +400,11 @@ async def test_error_handling_invalid_session(api_key):
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
             f"{API_BASE_URL}/api/agents/chat",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "X-Session-ID": "invalid-session-id"
-            },
+            headers={"Authorization": f"Bearer {api_key}", "X-Session-ID": "invalid-session-id"},
             json={
-                "messages": [
-                    {"role": "user", "content": "Hello"}
-                ],
-                "sessionId": "invalid-session-id"
-            }
+                "messages": [{"role": "user", "content": "Hello"}],
+                "sessionId": "invalid-session-id",
+            },
         )
 
         # Should return 404 for invalid session

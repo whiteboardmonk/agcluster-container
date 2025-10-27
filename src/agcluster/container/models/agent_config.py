@@ -8,6 +8,7 @@ from datetime import datetime
 # MCP Server Configuration Types
 class McpStdioServerConfig(BaseModel):
     """MCP server with stdio transport"""
+
     type: Optional[Literal["stdio"]] = "stdio"
     command: str
     args: Optional[List[str]] = None
@@ -16,6 +17,7 @@ class McpStdioServerConfig(BaseModel):
 
 class McpSseServerConfig(BaseModel):
     """MCP server with SSE transport"""
+
     type: Literal["sse"]
     url: str
     headers: Optional[Dict[str, str]] = None
@@ -23,6 +25,7 @@ class McpSseServerConfig(BaseModel):
 
 class McpHttpServerConfig(BaseModel):
     """MCP server with HTTP transport"""
+
     type: Literal["http"]
     url: str
     headers: Optional[Dict[str, str]] = None
@@ -35,6 +38,7 @@ McpServerConfig = Union[McpStdioServerConfig, McpSseServerConfig, McpHttpServerC
 # System Prompt Configuration
 class SystemPromptPreset(BaseModel):
     """System prompt using Claude Code preset"""
+
     type: Literal["preset"]
     preset: Literal["claude_code"]
     append: Optional[str] = None
@@ -43,6 +47,7 @@ class SystemPromptPreset(BaseModel):
 # Sub-agent Definition
 class AgentDefinition(BaseModel):
     """Sub-agent definition for multi-agent orchestration"""
+
     description: str = Field(..., description="When to use this agent")
     prompt: str = Field(..., description="Agent's system prompt")
     tools: Optional[List[str]] = Field(None, description="Allowed tools (inherits if omitted)")
@@ -52,6 +57,7 @@ class AgentDefinition(BaseModel):
 # Resource Limits
 class ResourceLimits(BaseModel):
     """Container resource limits"""
+
     cpu_quota: Optional[int] = Field(None, description="CPU quota in microseconds")
     memory_limit: Optional[str] = Field(None, description="Memory limit (e.g., '4g', '512m')")
     storage_limit: Optional[str] = Field(None, description="Storage limit (e.g., '10g')")
@@ -64,6 +70,7 @@ class AgentConfig(BaseModel):
 
     This configuration is passed to containers and used to initialize the Claude SDK.
     """
+
     # Metadata
     id: str = Field(..., description="Unique identifier for this config")
     name: str = Field(..., description="Human-readable name")
@@ -73,25 +80,21 @@ class AgentConfig(BaseModel):
     # Core Claude SDK options
     allowed_tools: List[str] = Field(
         default_factory=list,
-        description="List of allowed tool names (e.g., ['Bash', 'Read', 'Write'])"
+        description="List of allowed tool names (e.g., ['Bash', 'Read', 'Write'])",
     )
     system_prompt: Optional[Union[str, SystemPromptPreset]] = Field(
-        None,
-        description="System prompt as string or preset configuration"
+        None, description="System prompt as string or preset configuration"
     )
     mcp_servers: Dict[str, McpServerConfig] = Field(
-        default_factory=dict,
-        description="MCP server configurations keyed by server name"
+        default_factory=dict, description="MCP server configurations keyed by server name"
     )
-    permission_mode: Optional[Literal["default", "acceptEdits", "plan", "bypassPermissions"]] = Field(
-        None,
-        description="Permission mode for tool execution"
+    permission_mode: Optional[Literal["default", "acceptEdits", "plan", "bypassPermissions"]] = (
+        Field(None, description="Permission mode for tool execution")
     )
 
     # Multi-agent support
     agents: Optional[Dict[str, AgentDefinition]] = Field(
-        None,
-        description="Sub-agent definitions for multi-agent orchestration"
+        None, description="Sub-agent definitions for multi-agent orchestration"
     )
 
     # Resource limits
@@ -103,23 +106,34 @@ class AgentConfig(BaseModel):
     cwd: Optional[str] = Field(None, description="Working directory for agent")
     env: Optional[Dict[str, str]] = Field(default_factory=dict, description="Environment variables")
     setting_sources: Optional[List[Literal["user", "project", "local"]]] = Field(
-        None,
-        description="Filesystem settings to load"
+        None, description="Filesystem settings to load"
     )
 
     # Metadata
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    @field_validator('allowed_tools')
+    @field_validator("allowed_tools")
     @classmethod
     def validate_tools(cls, v: List[str]) -> List[str]:
         """Validate tool names"""
         valid_tools = {
-            "Bash", "Read", "Write", "Edit", "Grep", "Glob", "Task",
-            "WebFetch", "WebSearch", "TodoWrite", "NotebookEdit",
-            "BashOutput", "KillBash", "ExitPlanMode",
-            "ListMcpResources", "ReadMcpResource"
+            "Bash",
+            "Read",
+            "Write",
+            "Edit",
+            "Grep",
+            "Glob",
+            "Task",
+            "WebFetch",
+            "WebSearch",
+            "TodoWrite",
+            "NotebookEdit",
+            "BashOutput",
+            "KillBash",
+            "ExitPlanMode",
+            "ListMcpResources",
+            "ReadMcpResource",
         }
 
         for tool in v:
@@ -132,7 +146,7 @@ class AgentConfig(BaseModel):
 
         return v
 
-    @field_validator('id')
+    @field_validator("id")
     @classmethod
     def validate_id(cls, v: str) -> str:
         """Validate config ID format"""
@@ -141,8 +155,11 @@ class AgentConfig(BaseModel):
 
         # Allow alphanumeric, hyphens, underscores
         import re
-        if not re.match(r'^[a-z0-9\-_]+$', v):
-            raise ValueError("Config ID must contain only lowercase letters, numbers, hyphens, and underscores")
+
+        if not re.match(r"^[a-z0-9\-_]+$", v):
+            raise ValueError(
+                "Config ID must contain only lowercase letters, numbers, hyphens, and underscores"
+            )
 
         return v
 
@@ -156,13 +173,10 @@ class AgentConfig(BaseModel):
                 "system_prompt": {
                     "type": "preset",
                     "preset": "claude_code",
-                    "append": "Follow TDD principles."
+                    "append": "Follow TDD principles.",
                 },
                 "permission_mode": "acceptEdits",
-                "resource_limits": {
-                    "cpu_quota": 200000,
-                    "memory_limit": "4g"
-                }
+                "resource_limits": {"cpu_quota": 200000, "memory_limit": "4g"},
             }
         }
 
@@ -170,16 +184,19 @@ class AgentConfig(BaseModel):
 # Request/Response models for API
 class AgentConfigCreateRequest(BaseModel):
     """Request to create a new agent configuration"""
+
     config: AgentConfig
 
 
 class AgentConfigResponse(BaseModel):
     """Response containing agent configuration"""
+
     config: AgentConfig
     message: Optional[str] = None
 
 
 class AgentConfigListResponse(BaseModel):
     """Response containing list of configurations"""
+
     configs: List[AgentConfig]
     total: int

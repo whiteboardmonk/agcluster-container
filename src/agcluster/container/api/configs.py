@@ -1,7 +1,6 @@
 """Configuration management endpoints"""
 
 from fastapi import APIRouter, HTTPException
-from typing import List
 from pathlib import Path
 import yaml
 import logging

@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from agcluster.container.core.config import settings
 from agcluster.container.core.session_manager import session_manager
+from agcluster.container.api import agent_chat, agents, configs, tools, files
 
 # Configure logging
 logging.basicConfig(
@@ -77,9 +78,7 @@ async def health():
     }
 
 
-# Import and include routers
-from agcluster.container.api import agent_chat, agents, configs, tools, files
-
+# Include routers
 # Claude-native chat endpoint (replaces OpenAI /chat/completions)
 app.include_router(agent_chat.router, prefix="/api/agents", tags=["agents"])
 

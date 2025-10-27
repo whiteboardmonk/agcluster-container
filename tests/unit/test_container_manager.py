@@ -1,7 +1,7 @@
 """Unit tests for ContainerManager with provider abstraction."""
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
 import asyncio
 
@@ -9,7 +9,7 @@ from agcluster.container.core.container_manager import (
     ContainerManager,
     AgentContainer,
 )
-from agcluster.container.core.providers import ContainerInfo, ProviderConfig
+from agcluster.container.core.providers import ContainerInfo
 
 
 @pytest.mark.unit

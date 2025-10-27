@@ -259,11 +259,9 @@ async def download_file(
         docker_container = container_manager.provider.docker_client.containers.get(container.container_id)
 
         # Read file as raw bytes using validated path
-        # Use shlex.quote() to safely escape the path for shell
-        import shlex
-        safe_path = shlex.quote(str(validated_path))
+        # Use array form to avoid shell injection
         exec_result = docker_container.exec_run(
-            ["cat", str(validated_path)],  # Use array form to avoid shell injection
+            ["cat", str(validated_path)],
             stdout=True,
             stderr=True
         )
@@ -497,7 +495,7 @@ async def download_workspace(
             try:
                 os.close(zip_fd)
                 os.unlink(zip_path)
-            except:
+            except Exception:
                 pass
             raise e
 

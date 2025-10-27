@@ -144,7 +144,7 @@ class DockerProvider(ContainerProvider):
             try:
                 await self._wait_for_health(endpoint_url, timeout=10)
             except TimeoutError:
-                logger.warning(f"Health check timed out, but container is running")
+                logger.warning("Health check timed out, but container is running")
 
             # Create container info with API key hash for session ownership validation
             import hashlib

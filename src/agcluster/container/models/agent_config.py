@@ -1,7 +1,7 @@
 """Agent configuration models - mirrors Claude SDK's ClaudeAgentOptions"""
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, List, Literal, Any, Union
+from typing import Optional, Dict, List, Literal, Union
 from datetime import datetime
 
 

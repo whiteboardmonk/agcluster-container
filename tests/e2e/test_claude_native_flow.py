@@ -11,7 +11,6 @@ Tests the complete flow:
 import pytest
 import httpx
 import json
-import asyncio
 from typing import AsyncIterator
 
 
@@ -137,7 +136,7 @@ async def test_launch_session(api_key):
         assert data["config_id"] == "code-assistant"
         assert data["status"] == "running"
 
-        print(f"\n✓ Session launched successfully")
+        print("\n✓ Session launched successfully")
         print(f"  Session ID: {data['session_id']}")
         print(f"  Agent ID: {data['agent_id']}")
 
@@ -192,7 +191,7 @@ async def test_simple_chat_message(api_key, test_session):
         completion_events = [e for e in events if e.get("type") == "complete"]
         assert len(completion_events) > 0, "No completion event received"
 
-        print(f"\n✓ Chat message test passed")
+        print("\n✓ Chat message test passed")
         print(f"  Events received: {len(events)}")
         print(f"  Response: {full_response[:100]}...")
 
@@ -240,7 +239,7 @@ async def test_tool_execution_events(api_key, test_session):
         tool_names = [e.get("data", {}).get("tool_name") for e in tool_events]
         assert "Write" in tool_names or "Bash" in tool_names, f"Expected Write or Bash tool, got: {tool_names}"
 
-        print(f"\n✓ Tool execution test passed")
+        print("\n✓ Tool execution test passed")
         print(f"  Total events: {len(events)}")
         print(f"  Tool events: {len(tool_events)}")
         print(f"  Tools used: {set(tool_names)}")
@@ -284,7 +283,7 @@ async def test_todo_events(api_key, test_session):
 
         # We should get todo events since code-assistant has TodoWrite tool
         # Note: This depends on Claude deciding to use the tool
-        print(f"\n✓ Todo events test completed")
+        print("\n✓ Todo events test completed")
         print(f"  Total events: {len(events)}")
         print(f"  Todo events: {len(todo_events)}")
 
@@ -330,7 +329,7 @@ async def test_thinking_events(api_key, test_session):
                 thinking_content = event.get("data", {}).get("content", "")
                 print(f"  Thinking: {thinking_content[:100]}...")
 
-        print(f"\n✓ Thinking events test completed")
+        print("\n✓ Thinking events test completed")
         print(f"  Total events: {len(events)}")
         print(f"  Thinking events: {len(thinking_events)}")
 
@@ -397,7 +396,7 @@ async def test_session_persistence(api_key, test_session):
 
         full_response = "".join(content_parts)
 
-        print(f"\n✓ Session persistence test completed")
+        print("\n✓ Session persistence test completed")
         print(f"  Response: {full_response[:200]}...")
 
         # Context retention check

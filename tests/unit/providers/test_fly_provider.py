@@ -1,10 +1,8 @@
 """Unit tests for Fly Machines provider implementation."""
 
 import pytest
-import asyncio
 import json
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from datetime import datetime, timezone
 
 import httpx
 

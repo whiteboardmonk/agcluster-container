@@ -1,7 +1,7 @@
 """Agent management endpoints"""
 
-from fastapi import APIRouter, HTTPException, Header
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException
+from typing import List
 import uuid
 
 from agcluster.container.models.schemas import (
@@ -177,7 +177,7 @@ async def stop_session(session_id: str):
             "message": f"Session {session_id} stopped and removed"
         }
 
-    except Exception as e:
+    except Exception:
         # Session might not exist, but that's okay
         return {
             "status": "success",
@@ -197,9 +197,6 @@ async def interrupt_session(session_id: str):
         Success message
     """
     try:
-        from agcluster.container.core.container_manager import container_manager
-        import websockets
-        import json
 
         # Get session container
         agent_container = await session_manager.get_session(session_id)

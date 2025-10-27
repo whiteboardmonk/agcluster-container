@@ -3,7 +3,7 @@
 import pytest
 import asyncio
 from datetime import datetime, timezone, timedelta
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import Mock, AsyncMock, patch
 
 from agcluster.container.core.session_manager import SessionManager, SessionNotFoundError
 from agcluster.container.core.container_manager import AgentContainer

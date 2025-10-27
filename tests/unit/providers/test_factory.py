@@ -1,9 +1,8 @@
 """Unit tests for ProviderFactory."""
 
 import pytest
-from unittest.mock import Mock
 from agcluster.container.core.providers.factory import ProviderFactory
-from agcluster.container.core.providers.base import ContainerProvider, ContainerInfo, ProviderConfig
+from agcluster.container.core.providers.base import ContainerProvider
 
 
 @pytest.mark.unit

@@ -1,10 +1,8 @@
 """Unit tests for Docker provider implementation."""
 
 import pytest
-import asyncio
 import json
-from unittest.mock import Mock, AsyncMock, patch, MagicMock, call
-from datetime import datetime, timezone
+from unittest.mock import Mock, AsyncMock, patch, MagicMock
 
 import docker
 import httpx

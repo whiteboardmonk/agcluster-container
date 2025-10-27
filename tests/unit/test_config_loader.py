@@ -2,8 +2,6 @@
 
 import pytest
 import yaml
-import tempfile
-from pathlib import Path
 from agcluster.container.core.config_loader import (
     load_config_from_file,
     load_config_from_id,

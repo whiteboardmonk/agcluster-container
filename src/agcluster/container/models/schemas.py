@@ -1,7 +1,7 @@
 """Pydantic models for API requests and responses"""
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any, Literal, Union
+from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 
 # Import AgentConfig from agent_config module

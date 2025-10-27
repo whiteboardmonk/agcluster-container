@@ -19,7 +19,7 @@ class TestRootEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["service"] == "AgCluster Container Runtime"
-        assert data["version"] == "0.1.0"
+        assert data["version"] == "0.2.0"
         assert data["status"] == "running"
 
 

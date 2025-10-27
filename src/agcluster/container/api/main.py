@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AgCluster Container Runtime",
     description="Container runtime for Claude Agent SDK instances with OpenAI-compatible API",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan
 )
 
@@ -63,7 +63,7 @@ async def root():
     """Root endpoint"""
     return {
         "service": "AgCluster Container Runtime",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "status": "running"
     }
 

@@ -148,6 +148,31 @@ class ContainerProvider(ABC):
         pass
 
     @abstractmethod
+    async def upload_files(
+        self, container_id: str, files: list[Dict[str, Any]], target_path: str, overwrite: bool
+    ) -> list[str]:
+        """
+        Upload files to a container's workspace.
+
+        Args:
+            container_id: Container identifier
+            files: List of file dictionaries with keys:
+                   - original_name: Original filename
+                   - safe_name: Sanitized filename
+                   - content: File content as bytes
+                   - size: File size in bytes
+            target_path: Target directory path (validated)
+            overwrite: Whether to overwrite existing files
+
+        Returns:
+            list[str]: List of successfully uploaded filenames
+
+        Raises:
+            HTTPException: If upload fails or file already exists (when overwrite=False)
+        """
+        pass
+
+    @abstractmethod
     async def cleanup(self):
         """
         Cleanup provider resources (connections, clients, etc.).

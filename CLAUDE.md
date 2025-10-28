@@ -92,19 +92,22 @@ SDK context manager cleanup
    - File content preview with syntax highlighting (`GET /api/files/{session_id}/{path}`)
    - Individual file download (`GET /api/files/{session_id}/{path}/download`)
    - Workspace ZIP download (`POST /api/files/{session_id}/download`)
+   - **File upload to workspace** (`POST /api/files/{session_id}/upload`)
    - Supports text files, images (PNG/JPG preview), and binary files
    - Auto-detects file types and provides appropriate MIME types
+   - Upload security: size limits (50MB/file, 200MB/request), MIME type validation, filename sanitization, path traversal protection
 
 8. **Web UI** (`src/agcluster/container/ui/`)
    - Next.js 15 + React + TypeScript frontend
    - Real-time chat interface with AI SDK v5
    - Agent configuration builder with preset templates
    - Session management dashboard
-   - File explorer with tree view and preview
+   - File explorer with tree view, preview, and **upload support**
    - Tool execution timeline with status tracking
    - TodoWrite task tracking panel
    - Collapsible panels for tasks and tool execution
    - Monaco editor for code file viewing
+   - File upload modal with drag-and-drop support
    - Responsive glassmorphic design
 
 ## Namespace Package Structure
@@ -464,6 +467,15 @@ curl -X POST http://localhost:8000/chat/completions \
   }'
 ```
 
+### Upload Files to Workspace
+```bash
+curl -X POST "http://localhost:8000/api/files/conv-abc123.../upload?overwrite=false" \
+  -H "Authorization: Bearer YOUR_ANTHROPIC_API_KEY" \
+  -F "files=@/path/to/file1.txt" \
+  -F "files=@/path/to/file2.py"
+# Returns: {"session_id": "conv-abc123...", "uploaded": ["file1.txt", "file2.py"], ...}
+```
+
 ## Current Status
 
 **State**: ✅ **Production Ready with Agent Configuration System**
@@ -485,7 +497,9 @@ curl -X POST http://localhost:8000/chat/completions \
 - ✅ Namespace package structure for modularity
 - ✅ Comprehensive test suite (218 tests, 212 passing, 66% coverage)
 - ✅ Web UI with Next.js 15 + React + TypeScript
-- ✅ File operations API with security (browse, preview, download)
+- ✅ File operations API with security (browse, preview, download, **upload**)
+- ✅ File upload with multi-provider support (Docker + Fly.io)
+- ✅ Upload security: size limits, MIME validation, filename sanitization
 - ✅ Session ownership validation (Authorization header required)
 - ✅ Path traversal protection
 - ✅ Zip bomb protection (1GB/10K files limit)
@@ -493,7 +507,8 @@ curl -X POST http://localhost:8000/chat/completions \
 - ✅ Cryptographically secure session IDs
 - ✅ Real-time tool execution tracking
 - ✅ TodoWrite smart summaries in UI
-- ✅ File explorer with syntax highlighting
+- ✅ File explorer with syntax highlighting and upload button
+- ✅ File upload modal with drag-and-drop support
 - ✅ Monaco editor integration for code viewing
 
 **Tested and Verified**:
@@ -507,12 +522,13 @@ curl -X POST http://localhost:8000/chat/completions \
 - ✅ Docker image builds and networking
 - ✅ HTTP communication and streaming
 - ✅ Web UI chat interface and agent builder
-- ✅ File browsing, preview, and download (with auth)
+- ✅ File browsing, preview, download, and **upload** (with auth)
+- ✅ File upload via UI with progress tracking
 - ✅ Image file preview (PNG, JPG, etc.)
 - ✅ Workspace ZIP download (with size limits)
 - ✅ Real-time tool event tracking
 - ✅ TodoWrite intelligent task summaries
-- ✅ Security fixes (path traversal, session ownership, CORS, zip bomb)
+- ✅ Security fixes (path traversal, session ownership, CORS, zip bomb, upload validation)
 
 ## Future Enhancements
 

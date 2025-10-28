@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronRight, ChevronDown, File, Folder, Download, RefreshCw } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, Download, RefreshCw, Upload } from 'lucide-react';
+import { FileUploadModal } from './FileUploadModal';
 
 interface FileNode {
   name: string;
@@ -21,6 +22,7 @@ export function FileExplorer({ sessionId, onFileSelect, selectedFile }: FileExpl
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['/']));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const loadFiles = useCallback(async () => {
     try {
@@ -204,6 +206,14 @@ export function FileExplorer({ sessionId, onFileSelect, selectedFile }: FileExpl
         <h3 className="text-sm font-semibold">Workspace Files</h3>
         <div className="flex gap-1">
           <button
+            onClick={() => setShowUploadModal(true)}
+            className="p-1 hover:bg-gray-800 rounded"
+            title="Upload files"
+            data-testid="upload-files"
+          >
+            <Upload className="w-4 h-4" />
+          </button>
+          <button
             onClick={loadFiles}
             className="p-1 hover:bg-gray-800 rounded"
             title="Refresh files"
@@ -239,6 +249,15 @@ export function FileExplorer({ sessionId, onFileSelect, selectedFile }: FileExpl
           </div>
         )}
       </div>
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <FileUploadModal
+          sessionId={sessionId}
+          onClose={() => setShowUploadModal(false)}
+          onUploadComplete={loadFiles}
+        />
+      )}
     </div>
   );
 }

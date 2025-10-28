@@ -23,6 +23,7 @@ export function FileExplorer({ sessionId, onFileSelect, selectedFile }: FileExpl
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<string>('');
 
   const loadFiles = useCallback(async () => {
     try {
@@ -135,6 +136,7 @@ export function FileExplorer({ sessionId, onFileSelect, selectedFile }: FileExpl
           onClick={() => {
             if (isDirectory) {
               toggleExpanded(node.path);
+              setSelectedFolder(node.path);
             } else {
               onFileSelect(node.path);
             }
@@ -254,6 +256,7 @@ export function FileExplorer({ sessionId, onFileSelect, selectedFile }: FileExpl
       {showUploadModal && (
         <FileUploadModal
           sessionId={sessionId}
+          currentPath={selectedFolder}
           onClose={() => setShowUploadModal(false)}
           onUploadComplete={loadFiles}
         />

@@ -426,11 +426,24 @@ async def get_file_content(
             error_msg = exec_result.output.decode() if exec_result.output else "File not found"
             raise HTTPException(status_code=404, detail=f"File not found: {error_msg}")
 
-        # If raw=true, return binary data directly (for images)
-        if raw:
-            from fastapi.responses import Response
-            import mimetypes
+        # Auto-detect image files by extension and return raw data
+        from fastapi.responses import Response
+        import mimetypes
+        from pathlib import Path
 
+        file_path = Path(path)
+        file_ext = file_path.suffix.lower()
+        image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".ico"}
+
+        # Auto-return raw image data for image files (even without ?raw=true)
+        if file_ext in image_extensions:
+            content_type, _ = mimetypes.guess_type(path)
+            if content_type is None:
+                content_type = "application/octet-stream"
+            return Response(content=exec_result.output, media_type=content_type)
+
+        # If raw=true, return binary data directly (for other binary files)
+        if raw:
             # Guess content type from extension
             content_type, _ = mimetypes.guess_type(path)
             if content_type is None:
@@ -442,11 +455,19 @@ async def get_file_content(
         try:
             content = exec_result.output.decode("utf-8")
         except UnicodeDecodeError:
-            # Binary file detected
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot preview binary file. This file contains non-text data.",
-            )
+            # Binary file detected - return download info instead of error
+            file_size = len(exec_result.output)
+            content_type, _ = mimetypes.guess_type(path)
+
+            return {
+                "type": "binary",
+                "name": Path(path).name,
+                "path": path,
+                "size": file_size,
+                "content_type": content_type or "application/octet-stream",
+                "message": "This is a binary file and cannot be previewed as text.",
+                "download_url": f"/api/files/{session_id}/{path}?raw=true"
+            }
 
         # Detect language from extension
         ext = Path(path).suffix.lstrip(".")

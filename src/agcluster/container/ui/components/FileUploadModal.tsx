@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Upload, X, FileIcon, AlertCircle, CheckCircle } from 'lucide-react';
 import { uploadFiles, UploadFilesResponse } from '../lib/api-client';
 
@@ -22,7 +22,60 @@ export function FileUploadModal({
   const [overwrite, setOverwrite] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<UploadFilesResponse | null>(null);
+  const [targetPath, setTargetPath] = useState(currentPath);
+  const [pathError, setPathError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const checkDirectoryExists = useCallback(async (path: string): Promise<boolean> => {
+    if (!path) return true; // Empty = root, always valid
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiKey = localStorage.getItem('anthropic_api_key');
+
+      if (!apiKey) return false;
+
+      // Fetch file tree
+      const res = await fetch(`${apiUrl}/api/files/${sessionId}`, {
+        headers: { 'Authorization': `Bearer ${apiKey}` }
+      });
+
+      if (!res.ok) return false;
+
+      const data = await res.json();
+
+      // Recursively search tree for path
+      const findPath = (node: any, targetPath: string): boolean => {
+        if (node.path === targetPath && node.type === 'directory') return true;
+        if (node.children) {
+          return node.children.some((child: any) => findPath(child, targetPath));
+        }
+        return false;
+      };
+
+      return findPath(data.tree, path);
+    } catch {
+      return false;
+    }
+  }, [sessionId]);
+
+  // Validate target path with debounce
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (targetPath) {
+        const exists = await checkDirectoryExists(targetPath);
+        if (!exists) {
+          setPathError(`Directory "${targetPath}" does not exist`);
+        } else {
+          setPathError(null);
+        }
+      } else {
+        setPathError(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [targetPath, checkDirectoryExists]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -56,7 +109,7 @@ export function FileUploadModal({
       const result = await uploadFiles({
         sessionId,
         files: selectedFiles,
-        targetPath: currentPath,
+        targetPath: targetPath,
         overwrite,
         apiKey
       });
@@ -104,11 +157,28 @@ export function FileUploadModal({
           {/* Target Path */}
           <div className="mb-4">
             <label className="block text-sm text-gray-400 mb-1">
-              Target Directory
+              Target Directory (relative to /workspace)
             </label>
-            <div className="px-3 py-2 bg-gray-800 rounded text-sm">
-              /workspace{currentPath ? `/${currentPath}` : ''}
-            </div>
+            <input
+              type="text"
+              value={targetPath}
+              onChange={(e) => setTargetPath(e.target.value)}
+              placeholder="Leave empty for workspace root, or enter folder path (e.g., data, models/bert)"
+              disabled={uploading}
+              className={`w-full px-3 py-2 bg-gray-800 rounded text-sm focus:outline-none focus:ring-2 ${
+                pathError ? 'border border-red-500 focus:ring-red-500' : 'focus:ring-blue-500'
+              } disabled:opacity-50`}
+            />
+            {pathError ? (
+              <div className="mt-1 flex items-center gap-1 text-xs text-red-400">
+                <AlertCircle className="w-3 h-3" />
+                {pathError}
+              </div>
+            ) : (
+              <div className="mt-1 text-xs text-gray-500">
+                Files will be uploaded to: /workspace{targetPath ? `/${targetPath}` : ''}
+              </div>
+            )}
           </div>
 
           {/* File Input */}
@@ -223,8 +293,8 @@ export function FileUploadModal({
           </button>
           <button
             onClick={handleUpload}
-            className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 rounded flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={uploading || selectedFiles.length === 0}
+            className="px-4 py-2 text-sm bg-gray-800/50 hover:bg-gray-700/50 rounded flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            disabled={uploading || selectedFiles.length === 0 || pathError !== null}
           >
             {uploading ? (
               <>

@@ -10,7 +10,6 @@ import tarfile
 import os
 import hashlib
 import re
-import io
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Header, Depends, File, UploadFile, Query

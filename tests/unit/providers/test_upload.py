@@ -1,8 +1,7 @@
 """Unit tests for provider upload functionality."""
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from datetime import datetime, timezone
+from unittest.mock import Mock, AsyncMock, patch
 from fastapi import HTTPException
 import io
 import tarfile

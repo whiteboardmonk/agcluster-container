@@ -3,7 +3,6 @@
 import pytest
 from io import BytesIO
 from unittest.mock import Mock, AsyncMock, patch
-from fastapi import UploadFile
 from httpx import AsyncClient, ASGITransport
 
 from agcluster.container.api.main import app

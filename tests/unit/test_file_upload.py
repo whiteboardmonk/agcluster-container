@@ -3,8 +3,7 @@
 import pytest
 from pathlib import Path
 from fastapi import HTTPException, UploadFile
-from io import BytesIO
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock
 
 from agcluster.container.api.files import (
     sanitize_filename,

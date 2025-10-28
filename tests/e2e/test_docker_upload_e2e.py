@@ -6,9 +6,6 @@ They require Docker to be running and will be skipped if Docker is unavailable.
 
 import pytest
 import docker
-import io
-import tarfile
-from pathlib import Path
 
 from agcluster.container.core.providers.docker_provider import DockerProvider
 

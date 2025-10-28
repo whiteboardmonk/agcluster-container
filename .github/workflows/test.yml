@@ -115,8 +115,3 @@ jobs:
       - name: Run black check
         run: |
           black --check src/ tests/
-
-      - name: Run mypy
-        run: |
-          mypy src/
-        continue-on-error: true

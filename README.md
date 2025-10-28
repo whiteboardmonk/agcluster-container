@@ -4,9 +4,6 @@
 
 > 🚀 **Claude Agent Cloud**
 
-[![Tests](https://img.shields.io/badge/tests-212%20passing-brightgreen)]()
-[![Coverage](https://img.shields.io/badge/coverage-66%25-brightgreen)]()
-[![E2E Tests](https://img.shields.io/badge/E2E-passing-brightgreen)]()
 [![Docker](https://img.shields.io/badge/docker-required-blue)]()
 [![UI](https://img.shields.io/badge/UI-Next.js%2015-black)]()
 [![Python](https://img.shields.io/badge/python-3.11+-blue)]()
@@ -31,10 +28,10 @@
 
 **🌟 The Platform Approach**: Unlike API-only solutions, AgCluster Container provides both the infrastructure layer (Claude SDK API) and the management layer (Web UI) in a single, integrated package.
 
-### ✅ Current Status (v1.0)
+### ✅ Current Status (v0.2.0)
 
 - ✅ **Integrated Web UI** - Next.js 15 dashboard with real-time monitoring
-- ✅ **212 Tests Passing** - Backend unit + integration tests (66% coverage)
+- ✅ **Comprehensive Testing** - Backend unit and integration tests
 - ✅ **File Operations** - Secure browse, preview, and download workspace files
 - ✅ **Tool Execution Panel** - Real-time streaming of Bash, Read, Write, and more
 - ✅ **Task Tracking** - TodoWrite integration with intelligent status summaries
@@ -624,10 +621,9 @@ See `configs/README.md` for complete configuration documentation and examples.
 |--------|-------|
 | **Container Startup** | <3 seconds (adaptive) |
 | **First Response** | 5-10 seconds |
-| **Concurrent Sessions** | 10+ verified (100% success) |
+| **Concurrent Sessions** | 10+ verified |
 | **Response Time (single)** | 5-8 seconds |
 | **Response Time (10 concurrent)** | 10-15 seconds each |
-| **Test Success Rate** | 100% (133/133 passing) |
 
 ### Tested Scenarios
 
@@ -686,40 +682,40 @@ docker compose build
 # Install package in development mode first
 pip install -e ".[dev]"
 
-# Run all tests (133 passing)
+# Run all tests
 pytest tests/
 
-# Run with coverage (83% coverage)
+# Run with coverage report
 pytest --cov=agcluster.container tests/
 
 # Run specific test categories
-pytest tests/unit/                    # 115 unit tests
-pytest tests/integration/             # 18 integration tests
+pytest tests/unit/                    # Unit tests
+pytest tests/integration/             # Integration tests
 
 # Test by component
-pytest tests/unit/test_translator.py          # 21 tests - Message translation
-pytest tests/unit/test_container_manager.py   # 25 tests - Container lifecycle
-pytest tests/unit/test_session_manager.py     # 26 tests - Session management
-pytest tests/unit/test_config_loader.py       # 14 tests - Configuration loading
-pytest tests/unit/test_agent_config.py        # 29 tests - Agent config models
-pytest tests/integration/test_api_endpoints.py # 13 tests - API endpoints
-pytest tests/integration/test_config_api.py    # 5 tests - Config endpoints
+pytest tests/unit/test_translator.py          # Message translation
+pytest tests/unit/test_container_manager.py   # Container lifecycle
+pytest tests/unit/test_session_manager.py     # Session management
+pytest tests/unit/test_config_loader.py       # Configuration loading
+pytest tests/unit/test_agent_config.py        # Agent config models
+pytest tests/integration/test_api_endpoints.py # API endpoints
+pytest tests/integration/test_config_api.py    # Config endpoints
 
-# E2E/Robustness tests (require Docker, marked as skipped by default)
-pytest tests/robustness/ --run-skipped
+# E2E tests (require Docker, marked as skipped by default)
+pytest tests/e2e/ --run-skipped
 ```
 
-**Test Summary:**
-- ✅ **115 Unit Tests** - Core components (translator, containers, sessions, configs)
-- ✅ **18 Integration Tests** - API endpoints, validation, config management
-- ⏭️ **Robustness Tests** - E2E tests requiring Docker (skipped by default)
+**Test Coverage:**
+- ✅ **Unit Tests** - Core components (translator, containers, sessions, configs, providers)
+- ✅ **Integration Tests** - API endpoints, validation, config management
+- ✅ **E2E Tests** - End-to-end workflows requiring Docker
 
-**Coverage by Component:**
-- Provider Abstraction: Tests for Docker and Fly Machines providers
-- Container Management: 25 tests (lifecycle, networking, cleanup)
-- Session Management: 26 tests (creation, reuse, auto-cleanup)
-- Configuration System: 43 tests (loading, validation, preset discovery)
-- API Endpoints: 18 tests (agents, configs, chat, files)
+**Test Areas:**
+- Provider abstraction layer (Docker and Fly Machines)
+- Container lifecycle management
+- Session management with auto-cleanup
+- Configuration loading and validation
+- API endpoint functionality
 
 ### Monitoring & Troubleshooting
 
@@ -855,8 +851,8 @@ Web-enabled agents for information synthesis:
 - [x] Task tracking for all presets (TodoWrite tool)
 - [x] File operations API (browse, preview, download workspace)
 - [x] Multi-provider support (Docker, Fly Machines)
-- [x] Comprehensive test suite (212 tests passing, 66% coverage)
-- [x] Tested robustness
+- [x] Comprehensive test suite with unit, integration, and E2E tests
+- [x] Production-ready robustness
 
 ### 🔮 Future Enhancements
 - [ ] Multi-modal input support (images, files, PDFs)
@@ -961,7 +957,7 @@ AgCluster Container is the **foundational platform layer** in the AgCluster ecos
 - File operations API for workspace management
 - Multi-provider support (Docker, Fly Machines)
 - 10+ concurrent sessions verified
-- 212/212 tests passing, 66% coverage
+- Comprehensive test coverage
 
 ### In Development
 

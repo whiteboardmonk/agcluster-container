@@ -2,119 +2,83 @@
 
 <div align="center">
 
-> 🚀 **Claude Agent Cloud**
-
 [![Docker](https://img.shields.io/badge/docker-required-blue)]()
 [![UI](https://img.shields.io/badge/UI-Next.js%2015-black)]()
 [![Python](https://img.shields.io/badge/python-3.11+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
-[Why AgCluster?](#why-agcluster-container) • [Features](#features) • [Web UI](#-web-ui-dashboard) • [Quick Start](#quick-start) • [File Operations](#file-operations-api) • [Agent Configurations](#agent-configurations) • [Architecture](#architecture) • [API Reference](#api-reference)
+[Features](#features) • [Quick Start](#quick-start) • [Web UI](#web-ui) • [Agent Configurations](#agent-configurations) • [API Reference](#api-reference)
 
 </div>
 
 ---
 
-## 📖 Overview
+## Overview
 
-**AgCluster Container** is a self-hosted developer platform for building and managing [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk/overview) applications. Think of it as **"Claude Code in a box"** with visual management tools, real-time monitoring, and a REST API.
+**AgCluster Container** is a self-hosted platform for running [Claude Agent SDK](https://docs.claude.com/en/api/agent-sdk/overview) instances with a web dashboard and REST API. Each agent runs in an isolated Docker container with configurable tools and resources.
 
-**🎯 What You Get**:
-- 🖥️ **Integrated Web UI** - Next.js dashboard with real-time tool execution monitoring
-- 🔌 **Claude-Native REST API** - Full Claude SDK capabilities via HTTP API
-- 🐳 **Docker-Based Isolation** - Each agent runs in its own secure container
-- 📊 **Resource Monitoring** - Live resource usage, task tracking, and session management
-- ⚙️ **Visual Agent Builder** - Configure agents with preset templates or custom YAML
+**What it provides:**
+- Web UI for monitoring agent execution and managing files
+- REST API with Claude SDK capabilities
+- Docker-based isolation per session
+- Preset agent configurations for common tasks
+- File upload, preview, and download
 
-**🌟 The Platform Approach**: Unlike API-only solutions, AgCluster Container provides both the infrastructure layer (Claude SDK API) and the management layer (Web UI) in a single, integrated package.
-
-### ✅ Current Status (v0.2.0)
-
-- ✅ **Integrated Web UI** - Next.js 15 dashboard with real-time monitoring
-- ✅ **Comprehensive Testing** - Backend unit and integration tests
-- ✅ **File Operations** - Secure browse, preview, and download workspace files
-- ✅ **Tool Execution Panel** - Real-time streaming of Bash, Read, Write, and more
-- ✅ **Task Tracking** - TodoWrite integration with intelligent status summaries
-- ✅ **Resource Monitoring** - Live CPU/memory/disk usage per agent container
-- ✅ **Agent Configuration System** - 4 preset configs + inline config support
-- ✅ **Session Management** - Persistent containers with auto-cleanup (30-min timeout)
-- ✅ **Security Hardened** - Path traversal protection, session auth, CORS whitelist, zip bomb protection
+**Current Status:** Alpha (v0.3.0)
 
 ---
 
-## 🤔 Why AgCluster Container?
-
-### Developer Platform for Claude Agent SDK
-
-AgCluster Container is a self-hosted solution that combines:
-- 🖥️ **Visual Management UI** - See tool executions in real-time, not just API responses
-- 🤖 **Native Claude SDK** - Full agent harness with complete tool suite access
-- 🐳 **Docker Isolation** - Multi-user ready with container-per-session
-- 📊 **Built-in Monitoring** - Resource usage, task tracking, session management
-- ⚙️ **Visual Configuration** - Agent builder UI with preset templates and custom configs
-- 🔌 **REST API** - Full Claude SDK capabilities accessible via HTTP endpoints
-
----
-
-## ✨ Features
+## Features
 
 ### Core Capabilities
 
-- 🤖 **Claude Agent SDK Access** - Full agent capabilities (same harness powering Claude Code) via REST API
-- 🛠️ **Complete Tool Suite** - Bash, Read, Write, Grep, Task, WebFetch, WebSearch, NotebookEdit, TodoWrite, MCP extensibility
-- 🔐 **BYOK (Bring Your Own Key)** - Users provide their own Anthropic API keys (never stored)
-- 📡 **SSE Streaming Support** - Real-time Server-Sent Events streaming for all agent responses
-- 🐳 **Multi-Session Isolation** - Run 10+ concurrent sessions with full container isolation
-- 🔒 **Security Hardened** - Path traversal protection, session auth, CORS whitelist, zip bomb protection, minimal privileges, dropped capabilities
+- **Claude Agent SDK** - Full agent capabilities via REST API
+- **Tool Suite** - Bash, Read, Write, Edit, Grep, Glob, Task, WebFetch, WebSearch, NotebookEdit, TodoWrite
+- **BYOK** - Users provide their own Anthropic API keys (never stored)
+- **SSE Streaming** - Real-time Server-Sent Events for agent responses
+- **Multi-Session** - Multiple concurrent sessions with container isolation
+- **Security** - Path traversal protection, session auth, CORS whitelist, file size limits
 
 ### Agent Configuration System
 
-- 📋 **Preset Configurations** - 4 ready-to-use agent templates (code-assistant, research-agent, data-analysis, fullstack-team)
-- ⚙️ **Custom Configurations** - Define your own agents with specific tools, prompts, and resource limits
-- 🎯 **Tool Specialization** - Configure exactly which tools each agent can access
-- 🤝 **Multi-Agent Orchestration** - Fullstack-team preset with 3 specialized sub-agents (frontend, backend, devops)
-- 📓 **Jupyter Support** - Data-analysis preset includes NotebookEdit for reproducible analysis workflows
-- 💾 **Resource Management** - Per-agent CPU, memory, and storage limits
-- 🔗 **MCP Server Integration** - Configure custom Model Context Protocol servers per agent
-- 📝 **Task Tracking** - All presets include TodoWrite for multi-step workflow visibility
+- **Preset Configurations** - 4 ready-to-use templates:
+  - `code-assistant` - Full-stack development
+  - `research-agent` - Web research and analysis
+  - `data-analysis` - Statistical analysis with Jupyter
+  - `fullstack-team` - Multi-agent orchestration with sub-agents
+- **Custom Configurations** - Define agents with specific tools and limits
+- **Tool Specialization** - Configure which tools each agent can access
+- **Resource Management** - Per-agent CPU, memory, storage limits
 
-### Session Management
+### File Operations
 
-- 💬 **Config-Based Sessions** - Launch agents from presets or inline configs via `/api/agents/launch`
-- 🔄 **Context Preservation** - Same Claude SDK session reused across all messages
-- 🧹 **Auto-Cleanup** - Background task removes idle sessions after 30 minutes
-- 🎯 **Session Tracking** - List active sessions, view details, stop sessions via API
-- ⚙️ **Resource Efficiency** - One container per active session, not per message
-- 🔐 **Session Authorization** - API key verification prevents cross-session access
+- **Upload** - Drag-and-drop file upload to agent workspaces (50MB per file)
+- **Browse** - Tree view of workspace files
+- **Preview** - Syntax-highlighted code with Monaco editor
+- **Download** - Individual files or entire workspace as ZIP
+- **Image Support** - Direct preview of PNG, JPG, GIF, etc.
 
-### Technical Features
+### Web UI
 
-- ⚡ **Adaptive Readiness Detection** - WebSocket-based container health checks for 100% reliability
-- 🎯 **Session Isolation** - Each container maintains independent Claude SDK session with unique ID
-- 🌐 **Custom Networking** - Bridge network isolation for security
-- 📊 **Test-Driven Development** - Comprehensive test suite (212 unit + integration tests) with 66% code coverage
-- 🚀 **Lazy Initialization** - Docker client lazy-loads for better development experience
-- 🔄 **WebSocket Communication** - Bidirectional real-time communication between API and agents
+- **Dashboard** - Launch agents from preset configurations
+- **Real-time Chat** - SSE streaming with tool execution visibility
+- **File Explorer** - Browse, preview, and manage workspace files
+- **File Upload** - Drag-and-drop upload with path validation
+- **Tool Timeline** - View Bash commands, file operations in real-time
+- **Task Tracking** - TodoWrite integration with status summaries
+- **Session Management** - Monitor and control active containers
 
-### File Operations API
+---
 
-- 📁 **Workspace Browsing** - Tree view of all files created by agents
-- 👁️ **File Preview** - Syntax-highlighted code viewing with Monaco editor
-- 🖼️ **Image Support** - Direct preview of PNG, JPG, GIF, and other image formats
-- ⬇️ **Individual Downloads** - Download any workspace file with proper MIME types
-- 📦 **Workspace Export** - One-click ZIP download of entire workspace
-- 🎨 **Auto-Detection** - Automatic language detection for 30+ file types
-- ⚡ **Streaming Support** - Efficient handling of binary and large files
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- **Docker & Docker Compose** - [Install Docker](https://docs.docker.com/get-docker/)
-- **Anthropic API Key** - [Get one here](https://console.anthropic.com/)
-- **Python 3.11+** - For local development (optional)
+- Docker & Docker Compose - [Install Docker](https://docs.docker.com/get-docker/)
+- Anthropic API Key - [Get one here](https://console.anthropic.com/)
+- Python 3.11+ (optional, for local development)
 
-### 1️⃣ Clone and Setup
+### 1. Clone and Setup
 
 ```bash
 git clone https://github.com/whiteboardmonk/agcluster-container.git
@@ -124,10 +88,10 @@ cd agcluster-container
 cp .env.example .env
 ```
 
-### 2️⃣ Build Docker Images
+### 2. Build Docker Images
 
 ```bash
-# Build both images with docker compose (recommended)
+# Build with docker compose (recommended)
 docker compose build
 
 # Or build individually:
@@ -135,26 +99,34 @@ docker compose build
 # docker build -t agcluster/agent-api:latest -f Dockerfile .
 ```
 
-**Note:** First build may take 2-3 minutes to download base images and install dependencies.
+First build may take 2-3 minutes.
 
-### 3️⃣ Start AgCluster
+### 3. Start AgCluster
 
 ```bash
-# Start the full stack (API + Agent containers)
+# Start the full stack
 docker compose up -d
 
-# Check status
+# Check logs
 docker compose logs -f
 ```
 
-🎉 **AgCluster API is now running at `http://localhost:8000`**
+AgCluster is now running at `http://localhost:8000`
 
-### 4️⃣ Test the API
+### 4. Access Web UI
+
+Open your browser to `http://localhost:3000`
+
+1. Enter your Anthropic API key
+2. Select an agent configuration (e.g., `code-assistant`)
+3. Click "Launch Agent"
+4. Start chatting!
+
+### 5. Test the API
 
 **Health Check:**
 ```bash
 curl http://localhost:8000/health
-# Response: {"status":"healthy","agent_image":"agcluster/agent:latest"}
 ```
 
 **Launch an Agent:**
@@ -170,40 +142,25 @@ curl -X POST http://localhost:8000/api/agents/launch \
 
 **Send a Message:**
 ```bash
-# Save the session_id from the launch response
-SESSION_ID="conv-abc123..."
+SESSION_ID="conv-abc123..."  # from launch response
 
 curl -X POST http://localhost:8000/api/agents/${SESSION_ID}/chat \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ANTHROPIC_API_KEY" \
-  -d '{
-    "message": "Hello! Tell me what tools you have access to."
-  }'
+  -d '{"message": "Hello! Tell me what tools you have access to."}'
 ```
 
-**Streaming Response:**
-```bash
-curl -X POST http://localhost:8000/api/agents/${SESSION_ID}/chat \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ANTHROPIC_API_KEY" \
-  -H "Accept: text/event-stream" \
-  -d '{
-    "message": "Count to 10"
-  }' \
-  --no-buffer
-```
+---
 
-## 🎯 Agent Configurations
-
-AgCluster provides preset agent configurations optimized for different use cases, plus the ability to create custom configurations.
+## Agent Configurations
 
 ### Preset Agents
 
-#### 1. 🔧 Code Assistant (`code-assistant`)
-**Full-stack development agent with comprehensive tooling**
+#### 1. Code Assistant (`code-assistant`)
+
+Full-stack development agent
 
 - **Tools**: Bash, Read, Write, Edit, Grep, Glob, Task, TodoWrite
-- **System Prompt**: Claude Code preset with TDD emphasis
 - **Resources**: 2 CPUs, 4GB RAM, 10GB storage
 - **Use Cases**: Feature implementation, debugging, refactoring, testing
 
@@ -213,49 +170,31 @@ curl -X POST http://localhost:8000/api/agents/launch \
   -d '{"api_key": "sk-ant-...","config_id": "code-assistant"}'
 ```
 
-#### 2. 🔍 Research Agent (`research-agent`)
-**Web research and information analysis specialist**
+#### 2. Research Agent (`research-agent`)
+
+Web research and information analysis
 
 - **Tools**: WebFetch, WebSearch, Read, Write, Grep, TodoWrite
 - **Resources**: 1 CPU, 2GB RAM, 5GB storage
 - **Use Cases**: Research reports, source verification, information synthesis
 
-```bash
-curl -X POST http://localhost:8000/api/agents/launch \
-  -H "Content-Type: application/json" \
-  -d '{"api_key": "sk-ant-...","config_id": "research-agent"}'
-```
+#### 3. Data Analysis Agent (`data-analysis`)
 
-#### 3. 📊 Data Analysis Agent (`data-analysis`)
-**Statistical analysis and data visualization specialist**
+Statistical analysis and data visualization
 
 - **Tools**: Bash, Read, Write, Edit, Grep, Glob, NotebookEdit, TodoWrite
-- **Focus**: Pandas, numpy, scipy, scikit-learn, matplotlib, seaborn
+- **Focus**: Pandas, numpy, scipy, scikit-learn, matplotlib
 - **Resources**: 2 CPUs, 6GB RAM, 15GB storage
-- **Use Cases**: Exploratory data analysis, statistical testing, Jupyter workflows, machine learning
+- **Use Cases**: Exploratory data analysis, statistical testing, Jupyter workflows
 
-```bash
-curl -X POST http://localhost:8000/api/agents/launch \
-  -H "Content-Type: application/json" \
-  -d '{"api_key": "sk-ant-...","config_id": "data-analysis"}'
-```
+#### 4. Full-Stack Team (`fullstack-team`)
 
-#### 4. 👥 Full-Stack Team (`fullstack-team`)
-**Multi-agent orchestrator with specialized sub-agents**
+Multi-agent orchestrator with specialized sub-agents
 
-- **Main Agent Tools**: Task, Read, Glob, Grep, TodoWrite
-- **Sub-agents**:
-  - **Frontend**: React, Next.js, Tailwind CSS (Sonnet model)
-  - **Backend**: Python, FastAPI, databases (Sonnet model)
-  - **DevOps**: Docker, CI/CD, deployment (Haiku model)
+- **Main Tools**: Task, Read, Glob, Grep, TodoWrite
+- **Sub-agents**: Frontend (React), Backend (Python), DevOps (Docker)
 - **Resources**: 3 CPUs, 6GB RAM, 10GB storage
-- **Use Cases**: Complex features requiring multiple specialists, coordinated team development
-
-```bash
-curl -X POST http://localhost:8000/api/agents/launch \
-  -H "Content-Type: application/json" \
-  -d '{"api_key": "sk-ant-...","config_id": "fullstack-team"}'
-```
+- **Use Cases**: Complex features requiring multiple specialists
 
 ### Custom Configurations
 
@@ -280,138 +219,120 @@ curl -X POST http://localhost:8000/api/agents/launch \
   }'
 ```
 
-### Configuration Management
+### List Available Configurations
 
 ```bash
-# List all available configurations
+# List all configs
 curl http://localhost:8000/api/configs/
 
-# Get specific configuration details
+# Get specific config details
 curl http://localhost:8000/api/configs/code-assistant
-
-# Response includes tools, resources, prompts, etc.
 ```
 
 See `configs/README.md` for detailed configuration documentation.
 
 ---
 
-## 🌐 Multi-Provider Support
+## Web UI
 
-AgCluster supports running agent containers on multiple cloud platforms through a unified provider abstraction layer.
+The integrated Next.js dashboard provides a visual interface for managing agents:
 
-### Supported Providers
+### Features
 
-- ✅ **Docker** (default) - Local development and self-hosted deployments
-- ✅ **Fly Machines** - Production deployments with 300ms boot times
-- 🚧 **Cloudflare** - Global edge deployment (planned)
-- 🚧 **Vercel** - Serverless sandboxes (planned)
+**Launch Dashboard**
+- Select from preset agent configurations
+- View configuration details (tools, resources, prompts)
+- One-click agent launching
 
-### Quick Start
+**Chat Interface**
+- Real-time streaming responses with SSE
+- Tool execution visibility (Bash commands, file operations)
+- Message history
 
-**Docker (default):**
-```bash
-# .env
-CONTAINER_PROVIDER=docker
-```
+**File Explorer**
+- Tree view of workspace files
+- File preview with syntax highlighting (Monaco editor)
+- Image preview support
+- Download individual files or entire workspace
+- Upload files with drag-and-drop
 
-**Fly Machines:**
-```bash
-# .env
-CONTAINER_PROVIDER=fly_machines
-FLY_API_TOKEN=your_token
-FLY_APP_NAME=agcluster-agents
-FLY_REGION=iad  # Optional: US East (default)
-```
+**File Upload**
+- Upload to specific directories with path validation
+- Multi-file upload with progress tracking
+- Overwrite protection
+- File size validation (50MB per file)
 
-### Provider Comparison
+**Task Tracking**
+- TodoWrite integration
+- Real-time task status updates
+- Collapsible task panel
 
-| Provider | Boot Time | Cost (hourly) | Best For |
-|----------|-----------|---------------|----------|
-| **Docker** | 2-3s | Free (local) | Development, self-hosted |
-| **Fly Machines** | 300ms | ~$0.05 | Production, ephemeral workloads |
-| **Cloudflare** | <100ms | $5/mo + usage | Global edge, low latency |
-| **Vercel** | 1-2s | $20/mo (Pro) | Short tasks, Next.js integration |
+**Tool Timeline**
+- View Bash commands in real-time
+- File operations (Read, Write, Edit, Grep)
+- Execution status and output
 
-### Architecture
+**Session Management**
+- View active sessions
+- Stop sessions
+- Monitor resource usage
 
-**Key Design:**
-- AgCluster FastAPI server (control plane) can run anywhere (VPS, cloud VM, serverless)
-- Agent containers run on provider of your choice (Docker, Fly, Cloudflare, Vercel)
-- Communication via HTTP/SSE (universal compatibility, no WebSocket complexity)
-
-See [PROVIDERS.md](PROVIDERS.md) for complete architecture documentation and [docs/providers/fly_machines.md](docs/providers/fly_machines.md) for Fly.io setup guide.
+Access the UI at `http://localhost:3000` after starting with `docker compose up`.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
-### Claude-Native Platform Architecture
-
-AgCluster Container provides a platform for running Claude Agent SDK instances with visual management:
+### Platform Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                     Web UI Dashboard (Next.js)                   │
-│         Real-time tool execution monitoring & file browser       │
-└────────────────────────────┬─────────────────────────────────────┘
-                             │
-                             │ HTTP/SSE (API calls)
-                             │ Authorization: Bearer ANTHROPIC_API_KEY
-                             ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                   AgCluster FastAPI Backend                      │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │  KEY FEATURES: Platform Layer                             │  │
-│  │  • Session management (config-based launching)            │  │
-│  │  • Container lifecycle (create, monitor, cleanup)         │  │
-│  │  • File operations (browse, preview, download)            │  │
-│  │  • Agent configuration system (presets + custom)          │  │
-│  │  • Security (session auth, path validation, CORS)         │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└────────────────────────────┬─────────────────────────────────────┘
-                             │
-                             │ HTTP/SSE (http://container_ip:3000)
-                             │ Provider abstraction (Docker/Fly/etc.)
-                             ▼
-┌──────────────────────────────────────────────────────────────────┐
-│    Isolated Agent Container (Docker/Fly/Cloudflare/Vercel)      │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │              Agent Server (HTTP/SSE Server)                │  │
-│  │  ┌──────────────────────────────────────────────────────┐  │  │
-│  │  │        Claude Agent SDK (ClaudeSDKClient)            │  │  │
-│  │  │  • Same agent harness powering Claude Code           │  │  │
-│  │  │  • Session ID: unique per container                  │  │  │
-│  │  │  • Full tool suite: Bash, Read, Write, Grep, MCP    │  │  │
-│  │  │  • Working directory: /workspace (isolated)          │  │  │
-│  │  │  • Configurable tools per agent type                 │  │  │
-│  │  └──────────────────────────────────────────────────────┘  │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  Security: no-new-privileges, CAP_DROP=ALL, resource limits      │
-│  Network: Custom bridge (agcluster-network)                      │
-└──────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────┐
+│       Web UI Dashboard (Next.js)           │
+│   File explorer, chat, task tracking       │
+└──────────────────┬─────────────────────────┘
+                   │ HTTP/SSE
+                   ▼
+┌────────────────────────────────────────────┐
+│     AgCluster FastAPI Backend              │
+│  • Session management                      │
+│  • Container lifecycle                     │
+│  • File operations                         │
+│  • Agent configuration                     │
+└──────────────────┬─────────────────────────┘
+                   │ HTTP/SSE
+                   ▼
+┌────────────────────────────────────────────┐
+│   Isolated Agent Container (Docker)        │
+│  ┌──────────────────────────────────────┐  │
+│  │    Claude Agent SDK                  │  │
+│  │  • Session ID: unique per container  │  │
+│  │  • Tools: Bash, Read, Write, etc.    │  │
+│  │  • Working dir: /workspace           │  │
+│  └──────────────────────────────────────┘  │
+│                                            │
+│  Security: resource limits, no privileges  │
+└────────────────────────────────────────────┘
 ```
 
 ### Multi-Session Support
 
-Each session gets an isolated Claude Agent SDK session in its own container:
+Each session gets an isolated container:
 
 ```
-Session 1 → Container A (Claude SDK Session: abc-123, code-assistant)    ┐
-Session 2 → Container B (Claude SDK Session: def-456, research-agent)    ├─ All running
-Session 3 → Container C (Claude SDK Session: ghi-789, data-analysis)     │  concurrently
-...                                                                       │  with 100%
-Session N → Container N (Claude SDK Session: xyz-000, fullstack-team)    ┘  isolation
+Session 1 → Container A (code-assistant)
+Session 2 → Container B (research-agent)
+Session 3 → Container C (data-analysis)
+...
 ```
 
-**Verified:** 10+ concurrent sessions with unique session IDs and zero interference
+---
 
 ## API Reference
 
 ### Configuration Endpoints
 
-#### GET /api/configs/
+#### `GET /api/configs/`
+
 List all available agent configurations.
 
 **Response:**
@@ -431,34 +352,21 @@ List all available agent configurations.
 }
 ```
 
-#### GET /api/configs/{config_id}
-Get detailed configuration for a specific agent.
+#### `GET /api/configs/{config_id}`
 
-**Response:**
-```json
-{
-  "id": "code-assistant",
-  "name": "Code Assistant",
-  "allowed_tools": ["Bash", "Read", "Write", ...],
-  "system_prompt": {...},
-  "permission_mode": "acceptEdits",
-  "resource_limits": {
-    "cpu_quota": 200000,
-    "memory_limit": "4g"
-  }
-}
-```
+Get detailed configuration for a specific agent.
 
 ### Agent Management Endpoints
 
-#### POST /api/agents/launch
+#### `POST /api/agents/launch`
+
 Launch a new agent from configuration.
 
 **Request:**
 ```json
 {
   "api_key": "sk-ant-...",
-  "config_id": "code-assistant"  // Or provide inline "config"
+  "config_id": "code-assistant"
 }
 ```
 
@@ -472,46 +380,30 @@ Launch a new agent from configuration.
 }
 ```
 
-#### GET /api/agents/sessions
+#### `GET /api/agents/sessions`
+
 List all active agent sessions.
 
-**Response:**
-```json
-{
-  "sessions": [
-    {
-      "session_id": "conv-abc123",
-      "agent_id": "agent-xyz789",
-      "config_id": "code-assistant",
-      "status": "running",
-      "created_at": "2025-01-15T...",
-      "last_active": "2025-01-15T..."
-    }
-  ],
-  "total": 1
-}
-```
+#### `GET /api/agents/sessions/{session_id}`
 
-#### GET /api/agents/sessions/{session_id}
 Get details about a specific session.
 
-#### DELETE /api/agents/sessions/{session_id}
+#### `DELETE /api/agents/sessions/{session_id}`
+
 Stop and remove a session.
 
 ### Chat Endpoint
 
-#### POST /api/agents/{session_id}/chat
-Send messages to an active agent session.
+#### `POST /api/agents/{session_id}/chat`
 
-**Path Parameters:**
-- `session_id`: Session ID returned from `/api/agents/launch`
+Send messages to an active agent session.
 
 **Headers:**
 - `Authorization: Bearer YOUR_ANTHROPIC_API_KEY`
 - `Content-Type: application/json`
-- `Accept: text/event-stream` (for streaming responses)
+- `Accept: text/event-stream` (for streaming)
 
-**Request Body:**
+**Request:**
 ```json
 {
   "message": "Your message here"
@@ -519,36 +411,79 @@ Send messages to an active agent session.
 ```
 
 **Response:**
-- **Streaming** (when `Accept: text/event-stream`): Server-Sent Events with real-time tool execution updates
-- **Non-streaming**: Complete response with final text and tool results
+- Streaming (SSE): Real-time tool execution updates
+- Non-streaming: Complete response with final text
 
-**Example SSE Stream:**
-```
-data: {"type":"text","content":"Let me help you with that..."}
-data: {"type":"tool_use","tool":"Bash","input":"ls -la"}
-data: {"type":"tool_result","output":"total 48\ndrwxr-xr-x..."}
-data: {"type":"text","content":"I found 5 files in the directory."}
-data: [DONE]
-```
+### File Operations Endpoints
 
-### Utility Endpoints
+#### `GET /api/files/{session_id}`
 
-#### GET /health
-Health check endpoint.
+Browse workspace files in tree structure.
+
+#### `GET /api/files/{session_id}/{path}`
+
+Preview file content with syntax highlighting.
+
+#### `POST /api/files/{session_id}/download`
+
+Download entire workspace as ZIP.
+
+#### `POST /api/files/{session_id}/upload`
+
+Upload files to workspace.
+
+**Query Parameters:**
+- `target_path` (optional): Target directory
+- `overwrite` (default: false): Overwrite existing files
+
+**Request:** Multipart form data with files
 
 **Response:**
 ```json
 {
-  "status": "healthy",
-  "agent_image": "agcluster/agent:latest"
+  "uploaded": [
+    {"filename": "file1.txt", "path": "/workspace/file1.txt"}
+  ]
 }
 ```
+
+---
+
+## Multi-Provider Support
+
+AgCluster supports multiple deployment platforms through a provider abstraction layer.
+
+### Supported Providers
+
+- **Docker** (default) - Local development and self-hosted
+- **Fly Machines** - Production with 300ms boot times
+
+### Configuration
+
+**Docker:**
+```bash
+# .env
+CONTAINER_PROVIDER=docker
+```
+
+**Fly Machines:**
+```bash
+# .env
+CONTAINER_PROVIDER=fly_machines
+FLY_API_TOKEN=your_token
+FLY_APP_NAME=agcluster-agents
+FLY_REGION=iad  # Optional
+```
+
+See [PROVIDERS.md](PROVIDERS.md) for detailed provider documentation.
+
+---
 
 ## Configuration
 
 ### Environment Variables
 
-Edit `.env` to configure default settings:
+Edit `.env` to configure settings:
 
 ```bash
 # API Settings
@@ -559,38 +494,25 @@ API_DEBUG=true
 # Agent Image
 AGENT_IMAGE=agcluster/agent:latest
 
-# Default Container Resources (used when no config specified)
+# Default Container Resources
 CONTAINER_CPU_QUOTA=200000  # 2 CPUs
 CONTAINER_MEMORY_LIMIT=4g
 CONTAINER_STORAGE_LIMIT=10g
 
-# Default Agent Settings
-DEFAULT_SYSTEM_PROMPT="You are a helpful AI assistant."
-DEFAULT_ALLOWED_TOOLS=Bash,Read,Write,Grep
-DEFAULT_PERMISSION_MODE=acceptEdits
-DEFAULT_MAX_TURNS=100
-
 # Session Management
-SESSION_CLEANUP_INTERVAL=300      # Check every 5 minutes
-SESSION_IDLE_TIMEOUT=1800         # 30 minutes idle timeout
+SESSION_CLEANUP_INTERVAL=300      # 5 minutes
+SESSION_IDLE_TIMEOUT=1800         # 30 minutes
 ```
 
 ### Agent Configuration Files
 
-Agent configurations are stored in `configs/presets/` as YAML files. Each configuration defines:
+Agent configurations are stored in `configs/presets/` as YAML files.
 
-- **Tools**: Which tools the agent can access
-- **System Prompt**: Instructions and specialization
-- **Resource Limits**: CPU, memory, storage constraints
-- **Sub-agents**: For multi-agent orchestration (optional)
-- **MCP Servers**: Custom tool servers (optional)
-
-**Example configuration structure:**
+**Example structure:**
 ```yaml
 id: my-agent
 name: My Custom Agent
 description: Brief description
-version: 1.0.0
 
 system_prompt: |
   You are a specialist in...
@@ -599,54 +521,20 @@ allowed_tools:
   - Bash
   - Read
   - Write
-  - TodoWrite
-
-permission_mode: acceptEdits
 
 resource_limits:
-  cpu_quota: 200000      # 2 CPUs (100000 = 1 CPU)
-  memory_limit: 4g       # 4GB RAM
-  storage_limit: 10g     # 10GB disk
+  cpu_quota: 200000      # 2 CPUs
+  memory_limit: 4g
+  storage_limit: 10g
 
 max_turns: 100
 ```
 
-See `configs/README.md` for complete configuration documentation and examples.
-
-## 📊 Performance
-
-### Benchmarks
-
-| Metric | Value |
-|--------|-------|
-| **Container Startup** | <3 seconds (adaptive) |
-| **First Response** | 5-10 seconds |
-| **Concurrent Sessions** | 10+ verified |
-| **Response Time (single)** | 5-8 seconds |
-| **Response Time (10 concurrent)** | 10-15 seconds each |
-
-### Tested Scenarios
-
-✅ **3 concurrent requests** - 100% success
-✅ **5 concurrent requests** - 100% success
-✅ **10 concurrent requests** - 100% success
-✅ **Streaming & non-streaming** - Both work perfectly
-✅ **Tool execution** - All tools functional
-✅ **Session isolation** - Verified with unique session IDs
+See `configs/README.md` for complete documentation.
 
 ---
 
-## 📚 Documentation
-
-### Core Documentation
-- **[Agent Configuration](configs/README.md)** - Complete configuration reference for presets and custom agents
-- **[Multi-Provider Setup](PROVIDERS.md)** - Deploy on Docker, Fly.io, Cloudflare, Vercel
-- **[Security Audit Report](SECURITY_AUDIT_REPORT.md)** - Security features and best practices
-- **[Web UI Guide](src/agcluster/container/ui/README.md)** - Next.js dashboard setup and features
-
----
-
-## 🛠️ Development
+## Development
 
 ### Setup Development Environment
 
@@ -666,274 +554,169 @@ python -m agcluster.container.api.main
 ### Build Docker Images
 
 ```bash
-# Build agent image (Claude SDK container)
+# Build agent image
 docker build -t agcluster/agent:latest -f docker/Dockerfile.agent .
 
 # Build API image
 docker build -t agcluster/agent-api:latest -f Dockerfile .
 
-# Or build both with docker compose
+# Or build both
 docker compose build
 ```
 
 ### Run Tests
 
 ```bash
-# Install package in development mode first
+# Install package
 pip install -e ".[dev]"
 
 # Run all tests
 pytest tests/
 
-# Run with coverage report
+# Run with coverage
 pytest --cov=agcluster.container tests/
 
-# Run specific test categories
-pytest tests/unit/                    # Unit tests
-pytest tests/integration/             # Integration tests
-
-# Test by component
-pytest tests/unit/test_translator.py          # Message translation
-pytest tests/unit/test_container_manager.py   # Container lifecycle
-pytest tests/unit/test_session_manager.py     # Session management
-pytest tests/unit/test_config_loader.py       # Configuration loading
-pytest tests/unit/test_agent_config.py        # Agent config models
-pytest tests/integration/test_api_endpoints.py # API endpoints
-pytest tests/integration/test_config_api.py    # Config endpoints
-
-# E2E tests (require Docker, marked as skipped by default)
-pytest tests/e2e/ --run-skipped
+# Run specific categories
+pytest tests/unit/           # Unit tests
+pytest tests/integration/    # Integration tests
+pytest tests/e2e/           # E2E tests (require Docker)
 ```
 
 **Test Coverage:**
-- ✅ **Unit Tests** - Core components (translator, containers, sessions, configs, providers)
-- ✅ **Integration Tests** - API endpoints, validation, config management
-- ✅ **E2E Tests** - End-to-end workflows requiring Docker
+- Unit tests - Core components, providers, configuration
+- Integration tests - API endpoints, file operations
+- E2E tests - Full workflows with Docker containers
 
-**Test Areas:**
-- Provider abstraction layer (Docker and Fly Machines)
-- Container lifecycle management
-- Session management with auto-cleanup
-- Configuration loading and validation
-- API endpoint functionality
-
-### Monitoring & Troubleshooting
+### Monitoring
 
 **View logs:**
 ```bash
-# View all logs (API + agent containers)
+# All logs
 docker compose logs -f
 
-# View only API logs
+# API only
 docker compose logs -f api
 
-# View specific agent container logs
+# Specific container
 docker logs <container-id>
-
-# View logs with timestamps
-docker compose logs -f --timestamps
-
-# View last 100 lines
-docker compose logs --tail 100
 ```
 
 **Check running containers:**
 ```bash
-# View AgCluster API and agent containers
 docker ps | grep agcluster
-
-# View all containers (including stopped)
-docker ps -a | grep agcluster
 ```
 
-**Monitor session activity:**
-```bash
-# Watch logs for session creation/reuse
-docker compose logs -f api | grep -i session
+---
 
-# View container creation events
-docker compose logs -f api | grep "Creating new session"
+## Documentation
 
-# View session reuse events
-docker compose logs -f api | grep "Reusing existing session"
-```
+- **[Agent Configuration](configs/README.md)** - Configuration reference
+- **[Multi-Provider Setup](PROVIDERS.md)** - Deploy on Docker, Fly.io, etc.
+- **[Security Audit](SECURITY_AUDIT_REPORT.md)** - Security features
+- **[Web UI Guide](src/agcluster/container/ui/README.md)** - Dashboard setup
 
-**Debugging tips:**
-- Session management logs show when containers are created/reused
-- Each agent container has unique ID visible in logs
-- WebSocket connection issues appear in API logs
-- Claude SDK errors appear in agent container logs
+---
 
-### Namespace Package Structure
+## Use Cases
 
-This project uses **PEP 420 namespace packages** under the `agcluster` namespace:
+**Self-Hosted Development Platform**
+- Visual dashboard for agent monitoring
+- File browser for inspecting artifacts
+- Task tracking and session management
 
-```
-src/
-└── agcluster/             # Namespace (no __init__.py)
-    └── container/        # This package
-        ├── __init__.py
-        ├── api/          # FastAPI endpoints
-        ├── core/         # Core logic
-        └── models/       # Pydantic models
-```
+**Custom Agent Infrastructure**
+- Multi-tenant agent hosting
+- REST API gateway for Claude SDK
+- Container orchestration
 
-**Benefits:**
-- Other AgCluster projects (cli, dashboard) share the `agcluster.*` namespace
-- Clean imports: `from agcluster.container import X`
-- No package name conflicts
-- Ecosystem-ready architecture
+**Code Review & Analysis**
+- Automated PR reviews
+- Security scanning
+- Documentation generation
 
-**Future repos:**
-- `agcluster-cli` → `from agcluster.cli import Y`
-- `agcluster-dashboard` → `from agcluster.dashboard import Z`
-
-## 💡 Use Cases
-
-### 1. **Self-Hosted Developer Platform**
-Claude SDK platform with visual management:
-- Visual dashboard for real-time tool execution monitoring
-- File browser to inspect agent-created artifacts
-- Task tracking with intelligent status summaries
-- Resource monitoring and session management
-- Perfect for teams wanting full control over agent infrastructure
-
-### 2. **Custom Cloud Infrastructure**
-Foundation for building custom agent orchestration platforms:
-- Multi-tenant agent hosting with Docker/Fly.io/Cloudflare
-- REST API gateway for Claude Agent SDK
-- Session management and isolation
-- Scale horizontally with container orchestration
-- Bring-your-own-key billing model
-
-### 3. **Code Review & Analysis Agents**
-Deploy specialized agents for development workflows:
-- Automated PR reviews with file access
-- Security vulnerability scanning with tool execution
-- Style guide enforcement across codebases
-- Documentation generation from code analysis
-- Use `code-assistant` preset for full development capabilities
-
-### 4. **Data Science & Analytics Agents**
-Python-capable agents for data tasks:
-- Jupyter-style exploration with pandas/numpy (NotebookEdit tool)
-- Statistical analysis with tool execution
-- Data visualization and reporting
+**Data Science & Analytics**
+- Jupyter-style exploration with pandas/numpy
+- Statistical analysis
 - Interactive data debugging
-- Use `data-analysis` preset for optimized data workflows
 
-### 5. **Research & Intelligence Gathering**
-Web-enabled agents for information synthesis:
-- Multi-source research with WebSearch and WebFetch
-- Source verification and fact-checking
-- Competitive intelligence gathering
-- Market research automation
-- Use `research-agent` preset for web-focused workflows
+**Research & Intelligence**
+- Multi-source research
+- Source verification
+- Competitive intelligence
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
-### ✅ Completed (v1.0)
-- [x] Integrated Web UI Dashboard (Next.js 15 with real-time monitoring)
-- [x] Claude-native REST API with SSE streaming
-- [x] Session management (persistent containers per session)
-- [x] Multi-container concurrent sessions (10+ verified)
-- [x] Claude Agent SDK integration with session persistence
-- [x] HTTP/SSE communication for real-time streaming
-- [x] Auto-cleanup of idle sessions (30-min timeout)
-- [x] Security hardening (path traversal protection, session auth, CORS whitelist, zip bomb protection)
-- [x] Agent configuration system with 4 preset configs
-- [x] Config-based launching via /api/agents/launch
-- [x] Custom agent creation with inline configs
-- [x] Multi-agent orchestration (fullstack-team preset)
-- [x] Jupyter notebook support (data-analysis preset with NotebookEdit)
-- [x] Task tracking for all presets (TodoWrite tool)
-- [x] File operations API (browse, preview, download workspace)
-- [x] Multi-provider support (Docker, Fly Machines)
-- [x] Comprehensive test suite with unit, integration, and E2E tests
-- [x] Production-ready robustness
+### Completed (v0.3.0)
+- Integrated Web UI with Next.js 15
+- File upload with drag-and-drop
+- Claude-native REST API with SSE
+- Session management with auto-cleanup
+- Agent configuration system (4 presets)
+- File operations (browse, preview, download, upload)
+- Multi-provider support (Docker, Fly)
+- Comprehensive test suite
 
-### 🔮 Future Enhancements
-- [ ] Multi-modal input support (images, files, PDFs)
-- [ ] File attachment handling for document analysis
-- [ ] Additional agent presets (security-auditor, content-writer, etc.)
-- [ ] Multi-user authentication and authorization
-- [ ] Usage metering and quotas
-- [ ] Web dashboard UI for management
-- [ ] Monitoring and metrics (Prometheus/Grafana)
-- [ ] Kubernetes deployment guide
-- [ ] Agent marketplace and sharing
-- [ ] Conversation export and history persistence
+### Future
+- Additional agent presets
+- Multi-user authentication
+- Usage metering and quotas
+- Monitoring and metrics
+- Kubernetes deployment
+- Conversation export
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Container won't start
+
 ```bash
-# Check Docker is running
+# Check Docker
 docker ps
 
 # Check logs
 docker compose logs api
 
-# Rebuild images
+# Rebuild
 docker compose build --no-cache
 ```
 
-### "Connection refused" errors
-**Fixed in v1.0!** If you still see this:
-- Make sure you're on the latest version
-- Check container logs: `docker logs <container-name>`
-- Verify network connectivity: `docker network inspect agcluster-container_agcluster-network`
+### Connection errors
 
-### API responds with 500 errors
 ```bash
-# Check API logs
-docker compose logs api
-
-# Check agent container logs
-docker ps --filter "label=agcluster=true"
+# Check container logs
 docker logs <container-id>
 
-# Verify Anthropic API key is valid
-curl -X POST http://localhost:8000/health
+# Verify network
+docker network inspect agcluster-container_agcluster-network
 ```
 
 ### Tests failing
-```bash
-# Ensure virtual environment is activated (if using one)
-source venv/bin/activate  # or: conda activate <your-env>
 
+```bash
 # Reinstall dependencies
 pip install -e ".[dev]"
 
-# Run tests with verbose output
+# Run with verbose output
 pytest tests/ -v
 ```
 
-### High memory usage
-```bash
-# Check running containers
-docker ps --filter "label=agcluster=true"
+Need help? [Open an issue](https://github.com/whiteboardmonk/agcluster-container/issues)
 
-# Clean up stopped containers
-docker ps -a --filter "label=agcluster=true" --filter "status=exited" | xargs docker rm
+---
 
-# Restart API to clear state
-docker compose restart api
-```
+## Security
 
-Need more help? [Open an issue](https://github.com/whiteboardmonk/agcluster-container/issues)
-
-## Security Considerations
-
-- Containers run with minimal privileges (no-new-privileges, dropped capabilities)
-- Read-only root filesystem
+- Containers run with minimal privileges
+- Path traversal protection
+- Session-based authorization
+- File size limits (50MB per file)
 - Network isolation
 - Resource limits enforced
-- User API keys never stored on server
+
+---
 
 ## Contributing
 
@@ -943,102 +726,6 @@ Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 MIT License - see [LICENSE](LICENSE)
 
-## 🌐 AgCluster Ecosystem Vision
-
-AgCluster Container is the **foundational platform layer** in the AgCluster ecosystem for building custom cloud infrastructure with Claude Agent SDK at its core.
-
-### Current (v1.0) - v1.0 Released
-
-✅ **agcluster-container** - Claude SDK platform with visual management *(this project)*
-- Integrated Web UI Dashboard (Next.js 15) with real-time monitoring
-- Claude-native REST API with full SDK capabilities
-- Multi-tenant session isolation with config-based launching
-- 4 preset agent configurations + custom inline configs
-- File operations API for workspace management
-- Multi-provider support (Docker, Fly Machines)
-- 10+ concurrent sessions verified
-- Comprehensive test coverage
-
-### In Development
-
-🚧 **Container pooling** - Session persistence and reuse across requests
-🚧 **Multi-user auth** - Authentication layer with user quotas
-🚧 **Monitoring & observability** - Prometheus metrics, Grafana dashboards
-🚧 **Rate limiting** - Per-user/per-key request throttling
-
-### Roadmap - Building the Ecosystem
-
-📋 **agcluster-cli** - CLI for agent management
-- Create, list, stop agents from terminal
-- Stream logs and debug sessions
-- Deploy agent templates
-
-📋 **agcluster-dashboard** - Web UI for monitoring
-- Real-time agent monitoring
-- Usage analytics and billing
-- Agent template marketplace
-
-📋 **agcluster-registry** - MCP server marketplace
-- Custom tool registry
-- Community-contributed MCP servers
-- Agent workflow templates
-
-📋 **agcluster-orchestrator** - Multi-agent coordination
-- Agent-to-agent communication
-- Workflow orchestration
-- Distributed agent clusters
-
-### The Vision: Custom Cloud for Claude Agent SDK
-
-Build custom cloud infrastructure for deploying, managing, and scaling Claude Agent SDK agents:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Your Custom Cloud                        │
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │  Dashboard   │  │     CLI      │  │   Registry   │     │
-│  │   (Web UI)   │  │  (Terminal)  │  │  (MCP/Tools) │     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
-│         └──────────────────┴─────────────────┘             │
-│                           │                                 │
-│         ┌─────────────────▼─────────────────┐              │
-│         │   AgCluster Container (Platform)   │              │
-│         │  • Integrated Web UI Dashboard    │              │
-│         │  • Claude-native REST API         │              │
-│         │  • Multi-tenant isolation         │              │
-│         │  • Session management             │              │
-│         │  • File operations & monitoring   │              │
-│         └─────────────────┬─────────────────┘              │
-│                           │                                 │
-│         ┌─────────────────▼─────────────────┐              │
-│         │    Claude Agent SDK Instances     │              │
-│         │  • Containerized agents           │              │
-│         │  • Tool execution                 │              │
-│         │  • MCP extensibility              │              │
-│         │  • Multi-provider deployment      │              │
-│         └───────────────────────────────────┘              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Target Use Cases:**
-- Enterprise agent hosting platforms
-- AI-powered SaaS products
-- Developer tool companies
-- Research institutions
-- Custom agent workflows
-- Self-hosted development environments
-
-### Related Open Source Projects
-
-- [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-python) - The agent runtime powering AgCluster
-
-## Support
-
-- GitHub Issues: [Report bugs](https://github.com/whiteboardmonk/agcluster-container/issues)
-- Discussions: [Ask questions](https://github.com/whiteboardmonk/agcluster-container/discussions)
-- Discord: [Join community](#) (coming soon)
-
 ---
 
-**Built with ❤️ by the AgCluster team**
+**Built with ❤️ by whiteboardmonk & Claude Code. Not affiliated with or endorsed by Anthropic PBC**

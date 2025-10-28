@@ -184,6 +184,9 @@ class TestContainerProviderInterface:
             async def cleanup(self):
                 pass
 
+            async def upload_files(self, container_id, files, target_path, overwrite):
+                return [f["safe_name"] for f in files]
+
         # Should not raise
         provider = ValidProvider()
         assert isinstance(provider, ContainerProvider)
@@ -219,6 +222,9 @@ class TestProviderMethodSignatures:
 
         async def cleanup(self):
             pass
+
+        async def upload_files(self, container_id: str, files: list, target_path: str, overwrite: bool) -> list:
+            return [f["safe_name"] for f in files]
 
     @pytest.mark.asyncio
     async def test_create_container_signature(self):

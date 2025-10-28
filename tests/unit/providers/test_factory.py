@@ -40,6 +40,9 @@ class TestProviderRegistration:
             async def cleanup(self):
                 pass
 
+            async def upload_files(self, container_id, files, target_path, overwrite):
+                return []
+
         ProviderFactory.register_provider("test_provider", TestProvider)
 
         assert "test_provider" in ProviderFactory._providers
@@ -67,6 +70,9 @@ class TestProviderRegistration:
             async def cleanup(self):
                 pass
 
+            async def upload_files(self, container_id, files, target_path, overwrite):
+                return []
+
         class Provider2(ContainerProvider):
             async def create_container(self, session_id, config):
                 pass
@@ -85,6 +91,9 @@ class TestProviderRegistration:
 
             async def cleanup(self):
                 pass
+
+            async def upload_files(self, container_id, files, target_path, overwrite):
+                return []
 
         ProviderFactory.register_provider("test", Provider1)
         ProviderFactory.register_provider("test", Provider2)
@@ -133,6 +142,9 @@ class TestProviderCreation:
             async def cleanup(self):
                 pass
 
+            async def upload_files(self, container_id, files, target_path, overwrite):
+                return []
+
         ProviderFactory.register_provider("test", TestProvider)
 
         provider = ProviderFactory.create_provider("test", custom_param="value")
@@ -170,6 +182,9 @@ class TestProviderCreation:
 
             async def cleanup(self):
                 pass
+
+            async def upload_files(self, container_id, files, target_path, overwrite):
+                return []
 
         ProviderFactory.register_provider("configurable", ConfigurableProvider)
 

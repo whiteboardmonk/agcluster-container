@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upload button in chat input and file explorer
 - Real-time directory path validation with debouncing (500ms)
 - Multi-file upload with progress tracking and overwrite protection
-- File size validation (max 10MB per file)
+- File size validation (max 50MB per file)
 - `POST /api/files/{session_id}/upload` endpoint with `target_path` and `overwrite` params
 - 9 end-to-end upload tests covering various scenarios
 - Provider abstraction for file upload (Docker and Fly.io)

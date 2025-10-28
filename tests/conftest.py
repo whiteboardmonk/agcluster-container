@@ -23,9 +23,9 @@ def mock_docker_client():
                 "agcluster-container_agcluster-network": {
                     "IPAddress": "172.17.0.2",
                     "Gateway": "172.17.0.1",
-                    "NetworkID": "test-network-id"
+                    "NetworkID": "test-network-id",
                 }
-            }
+            },
         }
     }
     mock_container.logs = Mock(return_value=b"Container started")
@@ -55,9 +55,7 @@ def sample_openai_request():
     """Sample OpenAI chat completion request."""
     return {
         "model": "claude-sonnet-4.5",
-        "messages": [
-            {"role": "user", "content": "Hello, how are you?"}
-        ],
+        "messages": [{"role": "user", "content": "Hello, how are you?"}],
         "stream": True,
         "temperature": 0.7,
         "max_tokens": 1000,
@@ -67,12 +65,7 @@ def sample_openai_request():
 @pytest.fixture
 def sample_claude_messages():
     """Sample Claude SDK message format."""
-    return [
-        {
-            "role": "user",
-            "content": "Hello, how are you?"
-        }
-    ]
+    return [{"role": "user", "content": "Hello, how are you?"}]
 
 
 @pytest.fixture

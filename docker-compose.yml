@@ -25,6 +25,23 @@ services:
     networks:
       - agcluster-network
 
+  # AgCluster UI (Next.js)
+  ui:
+    build:
+      context: ./src/agcluster/container/ui
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # Client-side (browser) API URL - used by frontend JavaScript
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      # Server-side (API routes) API URL - used by Next.js server routes
+      - AGCLUSTER_API_URL=http://api:8000
+    depends_on:
+      - api
+    networks:
+      - agcluster-network
+
   # Build agent image (runs once)
   agent-builder:
     build:

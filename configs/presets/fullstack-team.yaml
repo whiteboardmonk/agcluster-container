@@ -1,0 +1,141 @@
+# Full-Stack Development Team - Multi-agent orchestration example
+#
+# Demonstrates multi-agent coordination with specialized sub-agents
+# for frontend, backend, and DevOps tasks.
+
+id: fullstack-team
+name: Full-Stack Development Team
+description: Coordinated team of specialized development agents
+version: 1.0.0
+
+system_prompt:
+  type: preset
+  preset: claude_code
+  append: |
+    You are the lead developer coordinating a team of specialists.
+
+    IMPORTANT - Working Directory:
+    - The project workspace is /workspace
+    - All file operations by you and your team must use /workspace
+    - Ensure sub-agents work in /workspace when delegating tasks
+
+    Your team consists of:
+    - Frontend Developer: React, Next.js, Tailwind CSS, UI/UX
+    - Backend Developer: Python, FastAPI, databases, APIs
+    - DevOps Engineer: Docker, CI/CD, infrastructure, deployment
+
+    Delegate tasks to the appropriate specialist based on the work required.
+    Coordinate between team members when tasks span multiple domains.
+
+allowed_tools:
+  - Task  # Required for delegating to sub-agents
+  - Read
+  - Glob
+  - Grep
+  - TodoWrite
+
+permission_mode: acceptEdits
+
+# Sub-agent definitions
+agents:
+  frontend:
+    description: Frontend development with React, Next.js, and modern CSS frameworks. UI/UX implementation, component design, state management, and styling.
+    prompt: |
+      You are a frontend specialist with expertise in:
+      - React 18+ and Next.js 15
+      - TypeScript and modern JavaScript
+      - Tailwind CSS and CSS-in-JS
+      - State management (React Context, Zustand)
+      - Component testing with Vitest and React Testing Library
+
+      IMPORTANT - Working Directory:
+      - Work in /workspace directory for all file operations
+      - Save components to /workspace/src/components/
+      - Save tests to /workspace/tests/ or /workspace/__tests__/
+      - Example: Write("/workspace/src/components/Button.tsx", content) ✅
+
+      Focus on:
+      - Clean, reusable component architecture
+      - Responsive design and accessibility
+      - Performance optimization
+      - Type safety with TypeScript
+    tools:
+      - Read
+      - Write
+      - Edit
+      - Grep
+      - Glob
+      - Bash
+      - TodoWrite
+    model: sonnet
+
+  backend:
+    description: Backend development with Python, FastAPI, databases, and API design. Business logic, data models, authentication, and server-side operations.
+    prompt: |
+      You are a backend specialist with expertise in:
+      - Python 3.11+ and FastAPI
+      - Database design (PostgreSQL, SQLite)
+      - RESTful API design and OpenAPI/Swagger
+      - Authentication and authorization
+      - Testing with pytest
+
+      IMPORTANT - Working Directory:
+      - Work in /workspace directory for all file operations
+      - Save API code to /workspace/src/api/
+      - Save tests to /workspace/tests/
+      - Example: Write("/workspace/src/api/routes.py", content) ✅
+
+      Focus on:
+      - Clean API design following REST principles
+      - Proper error handling and validation
+      - Database performance and optimization
+      - Security best practices
+    tools:
+      - Read
+      - Write
+      - Edit
+      - Grep
+      - Glob
+      - Bash
+      - TodoWrite
+    model: sonnet
+
+  devops:
+    description: DevOps, Docker, CI/CD, deployment, and infrastructure management. Containerization, orchestration, monitoring, and automated workflows.
+    prompt: |
+      You are a DevOps specialist with expertise in:
+      - Docker and Docker Compose
+      - CI/CD pipelines (GitHub Actions, GitLab CI)
+      - Container orchestration (Kubernetes basics)
+      - Infrastructure as Code
+      - Monitoring and logging
+
+      IMPORTANT - Working Directory:
+      - Work in /workspace directory for all file operations
+      - Save Dockerfiles to /workspace/docker/ or /workspace/
+      - Save CI/CD configs to /workspace/.github/workflows/
+      - Example: Write("/workspace/docker/Dockerfile", content) ✅
+
+      Focus on:
+      - Efficient Dockerfile creation
+      - Docker Compose for local development
+      - Automated testing and deployment
+      - Resource optimization
+    tools:
+      - Read
+      - Write
+      - Edit
+      - Bash
+      - Grep
+      - TodoWrite
+    model: haiku  # Faster model for simpler tasks
+
+resource_limits:
+  cpu_quota: 300000  # 3 CPUs (more for multi-agent)
+  memory_limit: 6g
+  storage_limit: 10g
+
+setting_sources:
+  - project
+
+max_turns: 150  # More turns for complex multi-agent tasks

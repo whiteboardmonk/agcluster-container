@@ -8,9 +8,11 @@ Full-featured web interface for the AgCluster Container platform, built with Nex
 
 - **Dashboard**: Launch agents from preset configurations (code-assistant, research-agent, data-analysis, fullstack-team)
 - **Chat Interface**: Real-time conversation with Claude agents via Vercel AI SDK
-- **Agent Builder**: Visual configuration creator (coming soon)
-- **Session Management**: Monitor active containers and resources (coming soon)
-- **File Viewer**: Browse and preview files created by agents (coming soon)
+- **Agent Builder**: Visual configuration creator with YAML preview and export
+- **Session Management**: Monitor active containers, view resource usage, and terminate sessions
+- **File Viewer**: Browse workspace files, syntax highlighting, and download as ZIP
+- **Tool Execution Panel**: Real-time display of Bash commands, file operations, and tool results
+- **Task Tracking**: TodoWrite integration with interactive task checklist display
 
 ## Tech Stack
 
@@ -146,18 +148,15 @@ The UI communicates with the AgCluster FastAPI backend at `http://localhost:8000
 
 - **GET /api/configs**: List available agent configurations
 - **POST /api/agents/launch**: Launch new agent with config
-- **POST /chat/completions**: OpenAI-compatible chat endpoint (via Vercel AI SDK)
+- **POST /api/agents/{session_id}/chat**: Send messages to agent session
+- **GET /api/agents/sessions**: List active sessions
+- **DELETE /api/agents/sessions/{session_id}**: Stop and remove a session
+- **GET /api/files/{session_id}**: Browse workspace files
+- **POST /api/files/{session_id}/download**: Download workspace as ZIP
 
-## Coming Soon
+## Future Enhancements
 
-- **Agent Builder**: Visual config creator with YAML export
-- **Session Management**: View active sessions, resource usage, terminate containers
-- **File Viewer**: Browse workspace files, syntax highlighting, download as ZIP
-- **Tool Execution Panel**: Real-time display of Bash commands, file operations
 - **Multi-Agent Visualization**: Color-coded messages for orchestrator + sub-agents
-- **TodoWrite Integration**: Interactive task checklist display
 - **Export Features**: Download conversations as Markdown, share agent configs
-
-## Development Roadmap
-
-See [PHASE1_COMPLETE.md](../../../../PHASE1_COMPLETE.md) for implementation status.
+- **Performance Metrics**: Historical resource usage charts and trends
+- **Agent Templates**: Community marketplace for sharing configurations

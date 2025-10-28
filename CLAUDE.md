@@ -541,3 +541,4 @@ curl -X POST "http://localhost:8000/api/files/conv-abc123.../upload?overwrite=fa
 - Agent-to-agent communication enhancements
 - Conversation export and history persistence
 - Never add this to the commit message: 🤖 Generated with Claude Code                                                                                                     Co-Authored-By: Claude <noreply@anthropic.com>
+- Always run ruff check src/ tests/

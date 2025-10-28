@@ -465,7 +465,7 @@ async def get_file_content(
                 "size": file_size,
                 "content_type": content_type or "application/octet-stream",
                 "message": "This is a binary file and cannot be previewed as text.",
-                "download_url": f"/api/files/{session_id}/{path}?raw=true"
+                "download_url": f"/api/files/{session_id}/{path}?raw=true",
             }
 
         # Detect language from extension

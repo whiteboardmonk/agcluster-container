@@ -223,7 +223,9 @@ class TestProviderMethodSignatures:
         async def cleanup(self):
             pass
 
-        async def upload_files(self, container_id: str, files: list, target_path: str, overwrite: bool) -> list:
+        async def upload_files(
+            self, container_id: str, files: list, target_path: str, overwrite: bool
+        ) -> list:
             return [f["safe_name"] for f in files]
 
     @pytest.mark.asyncio

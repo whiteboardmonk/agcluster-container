@@ -145,7 +145,9 @@ class TestDockerProviderUpload:
         target_path = "/workspace"
         overwrite = False
 
-        mock_docker_client.containers.get.side_effect = docker.errors.NotFound("Container not found")
+        mock_docker_client.containers.get.side_effect = docker.errors.NotFound(
+            "Container not found"
+        )
 
         with pytest.raises(HTTPException) as exc_info:
             await docker_provider.upload_files(container_id, sample_files, target_path, overwrite)
@@ -198,11 +200,13 @@ class TestFlyProviderUpload:
         with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
             mock_response.status_code = 200
-            mock_response.json = Mock(return_value={
-                "uploaded": ["test1.txt"],
-                "total_files": 1,
-                "target_path": "/workspace",
-            })
+            mock_response.json = Mock(
+                return_value={
+                    "uploaded": ["test1.txt"],
+                    "total_files": 1,
+                    "target_path": "/workspace",
+                }
+            )
             mock_response.raise_for_status = Mock()
 
             mock_client.return_value.__aenter__.return_value.post = AsyncMock(
@@ -219,7 +223,9 @@ class TestFlyProviderUpload:
     async def test_upload_files_machine_not_found(self, fly_provider, sample_files):
         """Test upload fails when machine not found."""
         with pytest.raises(HTTPException) as exc_info:
-            await fly_provider.upload_files("nonexistent-machine", sample_files, "/workspace", False)
+            await fly_provider.upload_files(
+                "nonexistent-machine", sample_files, "/workspace", False
+            )
 
         assert exc_info.value.status_code == 404
         assert "not found" in str(exc_info.value.detail).lower()
@@ -233,7 +239,9 @@ class TestFlyProviderUpload:
             mock_response = Mock()
             mock_response.status_code = 409
             mock_response.json = Mock(return_value={"detail": "File already exists"})
-            mock_response.raise_for_status = Mock()  # Won't be called since we check status_code first
+            mock_response.raise_for_status = (
+                Mock()
+            )  # Won't be called since we check status_code first
 
             mock_client.return_value.__aenter__.return_value.post = AsyncMock(
                 return_value=mock_response

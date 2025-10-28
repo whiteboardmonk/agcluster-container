@@ -728,4 +728,4 @@ MIT License - see [LICENSE](LICENSE)
 
 ---
 
-**Built by the AgCluster team**
+**Built with ❤️ by whiteboardmonk & Claude Code. Not affiliated with or endorsed by Anthropic PBC**

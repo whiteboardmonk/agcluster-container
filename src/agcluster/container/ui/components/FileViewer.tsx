@@ -26,6 +26,42 @@ export function FileViewer({ sessionId, filePath, onClose }: FileViewerProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  const loadImage = useCallback(async (path: string) => {
+    setLoading(true);
+    setError(null);
+    setImageUrl(null);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiKey = localStorage.getItem('anthropic_api_key');
+
+      if (!apiKey) {
+        throw new Error('No API key found. Please launch an agent from the dashboard first.');
+      }
+
+      const res = await fetch(`${apiUrl}/api/files/${sessionId}/${path}`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`
+        }
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to load image: ${res.statusText}`);
+      }
+
+      // Create object URL from blob
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      setImageUrl(objectUrl);
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to load image:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load image');
+      setLoading(false);
+    }
+  }, [sessionId]);
 
   const loadFile = useCallback(async (path: string) => {
     setLoading(true);
@@ -48,16 +84,18 @@ export function FileViewer({ sessionId, filePath, onClose }: FileViewerProps) {
       if (!res.ok) {
         // Get error message from response
         const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-
-        // Special handling for binary files (400 status)
-        if (res.status === 400 && errorData.detail?.includes('binary')) {
-          throw new Error('Cannot preview binary file. Please use the download button.');
-        }
-
         throw new Error(errorData.detail || `Failed to load file: ${res.statusText}`);
       }
 
       const data = await res.json();
+
+      // Check if it's a binary file (new response format)
+      if (data.type === 'binary') {
+        // Store binary file info in fileContent
+        setFileContent(data);
+        setLoading(false);
+        return;
+      }
 
       // Check if file is too large
       if (data.size_bytes > MAX_PREVIEW_SIZE) {
@@ -75,19 +113,33 @@ export function FileViewer({ sessionId, filePath, onClose }: FileViewerProps) {
 
   useEffect(() => {
     if (filePath) {
-      // Skip loading content for images and binary files - they'll be handled separately
-      if (isImageFile(filePath) || isBinaryFile(filePath)) {
+      if (isImageFile(filePath)) {
+        // Load image with authentication
+        loadImage(filePath);
+      } else if (isBinaryFile(filePath)) {
+        // Binary files don't need loading
         setLoading(false);
         setError(null);
         setFileContent(null);
       } else {
+        // Load text files
         loadFile(filePath);
       }
     } else {
       setFileContent(null);
       setError(null);
+      setImageUrl(null);
     }
-  }, [filePath, loadFile]);
+  }, [filePath, loadFile, loadImage]);
+
+  // Cleanup object URL when component unmounts or image changes
+  useEffect(() => {
+    return () => {
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    };
+  }, [imageUrl]);
 
   const copyToClipboard = async () => {
     if (!fileContent) return;
@@ -227,9 +279,6 @@ export function FileViewer({ sessionId, filePath, onClose }: FileViewerProps) {
 
   // Check if image file - show image preview
   if (isImageFile(filePath)) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const imageUrl = `${apiUrl}/api/files/${sessionId}/${filePath}?raw=true`;
-
     return (
       <div className="flex flex-col h-full glass border-l border-gray-800" data-testid="file-viewer">
         <div className="p-3 border-b border-gray-800 flex justify-between items-center">
@@ -255,14 +304,19 @@ export function FileViewer({ sessionId, filePath, onClose }: FileViewerProps) {
           </div>
         </div>
         <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-black/20">
-          <img
-            src={imageUrl}
-            alt={filePath}
-            className="max-w-full max-h-full object-contain"
-            onError={(e) => {
-              setError('Failed to load image');
-            }}
-          />
+          {loading && (
+            <div className="text-sm text-gray-500">Loading image...</div>
+          )}
+          {error && (
+            <div className="text-sm text-red-400">{error}</div>
+          )}
+          {imageUrl && !loading && !error && (
+            <img
+              src={imageUrl}
+              alt={filePath}
+              className="max-w-full max-h-full object-contain"
+            />
+          )}
         </div>
       </div>
     );
@@ -295,8 +349,65 @@ export function FileViewer({ sessionId, filePath, onClose }: FileViewerProps) {
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-gray-500">
           <FileX className="w-16 h-16 mb-4 opacity-50" />
-          <p className="text-sm mb-2">Cannot preview binary file</p>
-          <p className="text-xs text-gray-600">Click download to save this file</p>
+          <p className="text-sm mb-2">This is a binary file and cannot be previewed.</p>
+          <p className="text-xs text-gray-600">
+            You can{' '}
+            <button
+              onClick={downloadFile}
+              className="text-blue-400 hover:text-blue-300 underline cursor-pointer"
+            >
+              download this file
+            </button>
+            .
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if backend returned binary file metadata (new response format)
+  if (fileContent && (fileContent as any).type === 'binary') {
+    const binaryFile = fileContent as any;
+    return (
+      <div className="flex flex-col h-full glass border-l border-gray-800" data-testid="file-viewer">
+        <div className="p-3 border-b border-gray-800 flex justify-between items-center">
+          <h3 className="text-sm font-semibold truncate flex-1" title={filePath}>{binaryFile.name || filePath}</h3>
+          <div className="flex gap-1">
+            <button
+              onClick={downloadFile}
+              className="p-1 hover:bg-gray-800 rounded"
+              title="Download file"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-1 hover:bg-gray-800 rounded"
+                title="Close file viewer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center p-4 text-gray-500">
+          <FileX className="w-16 h-16 mb-4 opacity-50" />
+          <p className="text-sm mb-2">This is a binary file and cannot be previewed.</p>
+          <p className="text-xs text-gray-600 mb-3">
+            You can{' '}
+            <button
+              onClick={downloadFile}
+              className="text-blue-400 hover:text-blue-300 underline cursor-pointer"
+            >
+              download this file
+            </button>
+            .
+          </p>
+          <div className="mt-2 text-xs text-gray-600 space-y-1">
+            <p>File type: {binaryFile.content_type}</p>
+            <p>Size: {(binaryFile.size / 1024 / 1024).toFixed(2)} MB</p>
+          </div>
         </div>
       </div>
     );

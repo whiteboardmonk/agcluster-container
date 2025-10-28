@@ -9,21 +9,22 @@ from pathlib import Path
 from typing import Optional, Dict, Any, AsyncIterator
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, File, UploadFile, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    stream=sys.stdout
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    stream=sys.stdout,
 )
 logger = logging.getLogger(__name__)
 
 
 class QueryRequest(BaseModel):
     """Request model for query endpoint"""
+
     query: str
     history: list[Dict[str, Any]] = []
 
@@ -67,7 +68,7 @@ class AgentServer:
         if config_file.exists():
             logger.info(f"Loading config from {self.config_path}")
             try:
-                with open(config_file, 'r') as f:
+                with open(config_file, "r") as f:
                     self.config = json.load(f)
 
                 logger.info(f"Loaded config: {self.config.get('id')} - {self.config.get('name')}")
@@ -86,7 +87,7 @@ class AgentServer:
             "name": "Legacy Agent",
             "allowed_tools": os.environ.get("ALLOWED_TOOLS", "Bash,Read,Write").split(","),
             "system_prompt": os.environ.get("SYSTEM_PROMPT", "You are a helpful AI assistant."),
-            "permission_mode": "acceptEdits"
+            "permission_mode": "acceptEdits",
         }
 
     async def initialize_sdk(self):
@@ -98,7 +99,7 @@ class AgentServer:
             options_dict = {
                 "cwd": "/workspace",
                 "allowed_tools": self.config.get("allowed_tools", ["Bash", "Read", "Write"]),
-                "permission_mode": self.config.get("permission_mode", "acceptEdits")
+                "permission_mode": self.config.get("permission_mode", "acceptEdits"),
             }
 
             # Handle system prompt (string or preset object)
@@ -158,16 +159,14 @@ class AgentServer:
             await self.sdk_client.__aenter__()
 
             logger.info(f"Claude SDK client initialized for agent {self.agent_id}")
-            logger.info(f"Config: {self.config.get('id')} with tools: {options_dict['allowed_tools']}")
+            logger.info(
+                f"Config: {self.config.get('id')} with tools: {options_dict['allowed_tools']}"
+            )
         except Exception as e:
             logger.error(f"Failed to initialize Claude SDK: {e}", exc_info=True)
             raise
 
-    async def process_query_stream(
-        self,
-        query: str,
-        request: Request
-    ) -> AsyncIterator[str]:
+    async def process_query_stream(self, query: str, request: Request) -> AsyncIterator[str]:
         """
         Process query with Claude SDK and stream responses via SSE.
 
@@ -181,7 +180,7 @@ class AgentServer:
                 raise RuntimeError("Claude SDK client not initialized")
 
             # Check if this is a slash command
-            is_slash_command = query.strip().startswith('/')
+            is_slash_command = query.strip().startswith("/")
             if is_slash_command:
                 logger.info(f"Processing slash command: {query[:100]}...")
             else:
@@ -214,17 +213,13 @@ class AgentServer:
                         yield f"data: {json.dumps({'type': 'message', 'data': event, 'sequence': message_count})}\n\n"
 
                 # Check for completion (ResultMessage indicates completion)
-                if type(message).__name__ == 'ResultMessage':
+                if type(message).__name__ == "ResultMessage":
                     yield f"data: {json.dumps({'type': 'complete', 'status': 'success', 'total_messages': message_count})}\n\n"
                     break
 
         except Exception as e:
             logger.error(f"Error processing query: {e}", exc_info=True)
-            error_data = {
-                "type": "error",
-                "message": str(e),
-                "error_type": type(e).__name__
-            }
+            error_data = {"type": "error", "message": str(e), "error_type": type(e).__name__}
             yield f"data: {json.dumps(error_data)}\n\n"
 
     async def _format_message(self, message) -> Optional[Dict[str, Any]]:
@@ -246,16 +241,16 @@ class AgentServer:
             # Log every message type we receive
             logger.info(f"📨 Received message type: {type(message).__name__}")
             # Import types for checking - updated to match documentation
-            from claude_agent_sdk import (
-                AssistantMessage,
-                ToolUseBlock,
-                ToolResultBlock,
-                TextBlock
-            )
+            from claude_agent_sdk import AssistantMessage, ToolUseBlock, ToolResultBlock, TextBlock
 
             # Try to import additional message types that may not be available
             try:
-                from claude_agent_sdk import SystemMessage, ResultMessage, UserMessage, ThinkingBlock
+                from claude_agent_sdk import (
+                    SystemMessage,
+                    ResultMessage,
+                    UserMessage,
+                    ThinkingBlock,
+                )
             except ImportError:
                 SystemMessage = None
                 ResultMessage = None
@@ -279,7 +274,7 @@ class AgentServer:
                         return {
                             "type": "thinking",
                             "content": block.text,
-                            "timestamp": datetime.now(timezone.utc).isoformat()
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
                     elif isinstance(block, TextBlock):
                         # If we had a tool running, mark it as complete before showing text
@@ -288,14 +283,12 @@ class AgentServer:
                             # (Note: This is a simplification - in full impl we'd need a queue)
                             self.last_tool_name = None
 
-                        return {
-                            "type": "content",
-                            "role": "assistant",
-                            "content": block.text
-                        }
+                        return {"type": "content", "role": "assistant", "content": block.text}
                     elif isinstance(block, ToolUseBlock):
                         # Get tool_use_id from the block
-                        tool_use_id = getattr(block, 'id', f'tool_{block.name}_{datetime.now().timestamp()}')
+                        tool_use_id = getattr(
+                            block, "id", f"tool_{block.name}_{datetime.now().timestamp()}"
+                        )
 
                         # Track this tool for completion event
                         self.last_tool_name = block.name
@@ -308,7 +301,7 @@ class AgentServer:
                             "tool_input": block.input,
                             "timestamp": datetime.now(timezone.utc).isoformat(),
                             "status": "started",
-                            "content": f"Using tool: {block.name}"
+                            "content": f"Using tool: {block.name}",
                         }
 
                         # Check if this is TodoWrite tool - emit both tool_start AND todo_update
@@ -319,7 +312,7 @@ class AgentServer:
                                 todo_update_event = {
                                     "type": "todo_update",
                                     "todos": todos,
-                                    "timestamp": datetime.now(timezone.utc).isoformat()
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
                                 }
                                 return [tool_start_event, todo_update_event]
 
@@ -330,42 +323,42 @@ class AgentServer:
                         logger.info(f"ToolResultBlock received: {block}")
                         return {
                             "type": "tool_complete",
-                            "tool_name": getattr(block, 'tool_use_id', 'unknown'),
+                            "tool_name": getattr(block, "tool_use_id", "unknown"),
                             "timestamp": datetime.now(timezone.utc).isoformat(),
                             "status": "completed",
-                            "output": getattr(block, 'content', None),
-                            "is_error": getattr(block, 'is_error', False)
+                            "output": getattr(block, "content", None),
+                            "is_error": getattr(block, "is_error", False),
                         }
 
             # ===== METADATA (extract but don't include in user-facing content) =====
             if ResultMessage and isinstance(message, ResultMessage):
                 return {
                     "type": "metadata",
-                    "final_content": getattr(message, 'result', ''),
-                    "cost_usd": getattr(message, 'total_cost_usd', 0),
-                    "duration_ms": getattr(message, 'duration_ms', 0),
+                    "final_content": getattr(message, "result", ""),
+                    "cost_usd": getattr(message, "total_cost_usd", 0),
+                    "duration_ms": getattr(message, "duration_ms", 0),
                     "usage": {
-                        "input_tokens": getattr(message, 'usage', {}).get("input_tokens", 0),
-                        "output_tokens": getattr(message, 'usage', {}).get("output_tokens", 0),
+                        "input_tokens": getattr(message, "usage", {}).get("input_tokens", 0),
+                        "output_tokens": getattr(message, "usage", {}).get("output_tokens", 0),
                         "total_tokens": (
-                            getattr(message, 'usage', {}).get("input_tokens", 0) +
-                            getattr(message, 'usage', {}).get("output_tokens", 0)
-                        )
-                    }
+                            getattr(message, "usage", {}).get("input_tokens", 0)
+                            + getattr(message, "usage", {}).get("output_tokens", 0)
+                        ),
+                    },
                 }
 
             # ===== SYSTEM/DEBUG (skip in production responses) =====
             if SystemMessage and isinstance(message, SystemMessage):
                 return {
                     "type": "system",
-                    "subtype": getattr(message, 'subtype', ''),
-                    "session_id": getattr(message, 'data', {}).get("session_id", "")
+                    "subtype": getattr(message, "subtype", ""),
+                    "session_id": getattr(message, "data", {}).get("session_id", ""),
                 }
 
             # ===== USER MESSAGES (may contain ToolResultBlock) =====
             if UserMessage and isinstance(message, UserMessage):
                 # Check if this UserMessage contains ToolResultBlock
-                if hasattr(message, 'content') and isinstance(message.content, list):
+                if hasattr(message, "content") and isinstance(message.content, list):
                     block_types = [type(block).__name__ for block in message.content]
                     logger.info(f"  UserMessage contains blocks: {block_types}")
 
@@ -375,11 +368,11 @@ class AgentServer:
                             logger.info(f"✅ ToolResultBlock found in UserMessage: {block}")
                             return {
                                 "type": "tool_complete",
-                                "tool_name": getattr(block, 'tool_use_id', 'unknown'),
+                                "tool_name": getattr(block, "tool_use_id", "unknown"),
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
                                 "status": "completed",
-                                "output": getattr(block, 'content', None),
-                                "is_error": getattr(block, 'is_error', False)
+                                "output": getattr(block, "content", None),
+                                "is_error": getattr(block, "is_error", False),
                             }
                 # Don't echo regular user text messages back
                 return None
@@ -420,7 +413,7 @@ async def health_check():
     return {
         "status": "healthy",
         "agent_id": os.environ.get("AGENT_ID", "unknown"),
-        "sdk_initialized": server.sdk_client is not None if server else False
+        "sdk_initialized": server.sdk_client is not None if server else False,
     }
 
 
@@ -453,7 +446,7 @@ async def query_agent(query_request: QueryRequest, request: Request):
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
-        }
+        },
     )
 
 
@@ -472,6 +465,94 @@ async def interrupt_execution():
         return {"error": str(e)}
 
 
+@app.post("/upload")
+async def upload_files_to_workspace(
+    files: list[UploadFile] = File(...),
+    target_path: str = Form("/workspace"),
+    overwrite: bool = Form(False),
+):
+    """
+    Upload files to workspace directory.
+
+    Used by Fly.io provider to upload files via HTTP proxy.
+    Docker provider uses tar archive method instead.
+
+    Args:
+        files: List of files to upload
+        target_path: Target directory path (default: /workspace)
+        overwrite: Whether to overwrite existing files
+
+    Returns:
+        Dict with uploaded filenames
+
+    Security:
+        - Path validation to prevent directory traversal
+        - Filename sanitization
+        - File existence checks
+    """
+    import re
+
+    # Validate target path (must be within /workspace)
+    workspace = Path("/workspace")
+    target = Path(target_path)
+
+    # Resolve and verify path is within workspace
+    try:
+        resolved_target = target.resolve()
+        resolved_target.relative_to(workspace)
+    except (ValueError, RuntimeError):
+        raise HTTPException(
+            status_code=400, detail="Invalid target path: must be within /workspace"
+        )
+
+    # Ensure target directory exists
+    resolved_target.mkdir(parents=True, exist_ok=True)
+
+    uploaded_files = []
+
+    for file in files:
+        # Sanitize filename
+        filename = os.path.basename(file.filename or "unnamed")
+        filename = re.sub(r"[^\w\s\-\.]", "_", filename)
+
+        if filename.startswith(".") or filename.startswith("-"):
+            filename = "_" + filename[1:]
+
+        if not filename or filename in [".", ".."]:
+            raise HTTPException(status_code=400, detail="Invalid filename")
+
+        # Full file path
+        file_path = resolved_target / filename
+
+        # Check if file exists (if overwrite=False)
+        if not overwrite and file_path.exists():
+            raise HTTPException(
+                status_code=409,
+                detail=f"File '{filename}' already exists. Set overwrite=true to replace it.",
+            )
+
+        # Write file
+        try:
+            content = await file.read()
+            with open(file_path, "wb") as f:
+                f.write(content)
+
+            # Set proper permissions (rw-r--r--)
+            file_path.chmod(0o644)
+
+            uploaded_files.append(filename)
+            logger.info(f"Uploaded file: {file_path}")
+        except Exception as e:
+            logger.error(f"Error writing file {filename}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
+
+    return {
+        "uploaded": uploaded_files,
+        "total_files": len(uploaded_files),
+        "target_path": str(resolved_target),
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
 
@@ -480,5 +561,5 @@ if __name__ == "__main__":
         app,
         host="0.0.0.0",
         port=3000,  # Changed from 8765 (WebSocket) to 3000 (HTTP)
-        log_level="info"
+        log_level="info",
     )

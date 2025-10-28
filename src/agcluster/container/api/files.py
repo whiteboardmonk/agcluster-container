@@ -9,9 +9,10 @@ import zipfile
 import tarfile
 import os
 import hashlib
+import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, HTTPException, Header, Depends
+from fastapi import APIRouter, HTTPException, Header, Depends, File, UploadFile, Query
 from fastapi.responses import FileResponse
 
 from agcluster.container.core.session_manager import session_manager, SessionNotFoundError
@@ -23,6 +24,123 @@ router = APIRouter()
 # Zip bomb protection limits
 MAX_WORKSPACE_SIZE = 1 * 1024 * 1024 * 1024  # 1GB
 MAX_FILES = 10000
+
+# File upload limits
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB per file
+MAX_TOTAL_UPLOAD_SIZE = 200 * 1024 * 1024  # 200MB total per request
+MAX_FILES_PER_UPLOAD = 50
+
+# Allowed MIME types for uploads
+ALLOWED_MIME_TYPES = {
+    # Text files
+    "text/plain",
+    "text/csv",
+    "text/markdown",
+    "text/x-markdown",
+    # Code files
+    "text/x-python",
+    "text/x-python-script",
+    "application/x-python-code",
+    "text/javascript",
+    "application/javascript",
+    "application/x-javascript",
+    "text/typescript",
+    "application/typescript",
+    "application/json",
+    "text/x-java-source",
+    "text/x-c",
+    "text/x-c++",
+    "text/x-rust",
+    "text/x-go",
+    # Documents
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    # Images
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+    # Archives
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/x-tar",
+    "application/gzip",
+    "application/x-gzip",
+    # Data files
+    "application/x-sqlite3",
+    "text/xml",
+    "application/xml",
+    # Generic
+    "application/octet-stream",  # Allow generic binary with filename check
+}
+
+
+def sanitize_filename(filename: str) -> str:
+    """
+    Sanitize filename to prevent security issues.
+
+    Removes path separators, dangerous characters, and prevents hidden files.
+
+    Args:
+        filename: Original filename from upload
+
+    Returns:
+        Sanitized safe filename
+
+    Raises:
+        HTTPException: If filename is empty or invalid after sanitization
+    """
+    if not filename:
+        raise HTTPException(status_code=400, detail="Filename cannot be empty")
+
+    # Get basename to remove any path components
+    name = os.path.basename(filename)
+
+    # Remove dangerous characters (keep alphanumeric, spaces, hyphens, dots, underscores)
+    name = re.sub(r"[^\w\s\-\.]", "_", name)
+
+    # Prevent hidden files and shell command injection
+    if name.startswith(".") or name.startswith("-"):
+        name = "_" + name[1:]
+
+    # Limit length
+    if len(name) > 255:
+        # Preserve extension if possible
+        parts = name.rsplit(".", 1)
+        if len(parts) == 2:
+            name = parts[0][:250] + "." + parts[1]
+        else:
+            name = name[:255]
+
+    # Ensure we still have a valid filename
+    if not name or name in [".", ".."]:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    return name
+
+
+def validate_file_type(file: UploadFile):
+    """
+    Validate file MIME type.
+
+    Args:
+        file: Uploaded file
+
+    Raises:
+        HTTPException: If file type is not allowed
+    """
+    content_type = file.content_type or "application/octet-stream"
+
+    if content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{content_type}' not allowed. "
+            f"Allowed types: text, code, documents, images, archives, data files",
+        )
 
 
 def validate_workspace_path(user_path: str) -> Path:
@@ -307,11 +425,24 @@ async def get_file_content(
             error_msg = exec_result.output.decode() if exec_result.output else "File not found"
             raise HTTPException(status_code=404, detail=f"File not found: {error_msg}")
 
-        # If raw=true, return binary data directly (for images)
-        if raw:
-            from fastapi.responses import Response
-            import mimetypes
+        # Auto-detect image files by extension and return raw data
+        from fastapi.responses import Response
+        import mimetypes
+        from pathlib import Path
 
+        file_path = Path(path)
+        file_ext = file_path.suffix.lower()
+        image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".ico"}
+
+        # Auto-return raw image data for image files (even without ?raw=true)
+        if file_ext in image_extensions:
+            content_type, _ = mimetypes.guess_type(path)
+            if content_type is None:
+                content_type = "application/octet-stream"
+            return Response(content=exec_result.output, media_type=content_type)
+
+        # If raw=true, return binary data directly (for other binary files)
+        if raw:
             # Guess content type from extension
             content_type, _ = mimetypes.guess_type(path)
             if content_type is None:
@@ -323,11 +454,19 @@ async def get_file_content(
         try:
             content = exec_result.output.decode("utf-8")
         except UnicodeDecodeError:
-            # Binary file detected
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot preview binary file. This file contains non-text data.",
-            )
+            # Binary file detected - return download info instead of error
+            file_size = len(exec_result.output)
+            content_type, _ = mimetypes.guess_type(path)
+
+            return {
+                "type": "binary",
+                "name": Path(path).name,
+                "path": path,
+                "size": file_size,
+                "content_type": content_type or "application/octet-stream",
+                "message": "This is a binary file and cannot be previewed as text.",
+                "download_url": f"/api/files/{session_id}/{path}?raw=true",
+            }
 
         # Detect language from extension
         ext = Path(path).suffix.lstrip(".")
@@ -477,3 +616,119 @@ async def download_workspace(session_id: str, api_key: str = Depends(verify_sess
     except Exception as e:
         logger.error(f"Error creating workspace ZIP for session {session_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to create workspace archive: {str(e)}")
+
+
+@router.post("/api/files/{session_id}/upload")
+async def upload_files(
+    session_id: str,
+    files: List[UploadFile] = File(...),
+    target_path: str = Query("", description="Target directory (relative to /workspace)"),
+    overwrite: bool = Query(False, description="Overwrite existing files"),
+    api_key: str = Depends(verify_session_access),
+):
+    """
+    Upload files to container's /workspace directory.
+
+    Requires valid Authorization header matching the session owner.
+    Files are validated for type, size, and filename safety.
+
+    Args:
+        session_id: Session identifier
+        files: List of files to upload
+        target_path: Target directory relative to /workspace (default: root)
+        overwrite: Whether to overwrite existing files (default: False)
+
+    Returns:
+        Dict with uploaded filenames and metadata
+
+    Security:
+        - File size limit: 50MB per file, 200MB total
+        - MIME type validation
+        - Filename sanitization
+        - Path traversal protection
+        - Session ownership validation
+    """
+    # Validate file count
+    if len(files) > MAX_FILES_PER_UPLOAD:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many files. Maximum: {MAX_FILES_PER_UPLOAD}, received: {len(files)}",
+        )
+
+    # Validate target path
+    if target_path:
+        validated_target = validate_workspace_path(target_path)
+    else:
+        validated_target = Path("/workspace")
+
+    logger.info(
+        f"Upload request for session {session_id}: {len(files)} files to {validated_target}"
+    )
+
+    try:
+        container = await session_manager.get_session(session_id)
+    except SessionNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+
+    # Validate files and prepare for upload
+    total_size = 0
+    files_to_upload = []
+
+    for file in files:
+        # Validate MIME type
+        validate_file_type(file)
+
+        # Sanitize filename
+        safe_filename = sanitize_filename(file.filename)
+
+        # Read file content
+        content = await file.read()
+        file_size = len(content)
+
+        # Validate individual file size
+        if file_size > MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File '{file.filename}' too large ({file_size / 1024 / 1024:.2f}MB). "
+                f"Maximum: {MAX_UPLOAD_SIZE / 1024 / 1024:.0f}MB",
+            )
+
+        # Check total size
+        total_size += file_size
+        if total_size > MAX_TOTAL_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Total upload size too large ({total_size / 1024 / 1024:.2f}MB). "
+                f"Maximum: {MAX_TOTAL_UPLOAD_SIZE / 1024 / 1024:.0f}MB",
+            )
+
+        files_to_upload.append(
+            {
+                "original_name": file.filename,
+                "safe_name": safe_filename,
+                "content": content,
+                "size": file_size,
+            }
+        )
+
+    # Use provider to upload files
+    try:
+        uploaded_files = await container_manager.provider.upload_files(
+            container.container_id, files_to_upload, str(validated_target), overwrite
+        )
+
+        logger.info(f"Successfully uploaded {len(uploaded_files)} files to session {session_id}")
+
+        return {
+            "session_id": session_id,
+            "target_path": str(validated_target),
+            "uploaded": uploaded_files,
+            "total_files": len(uploaded_files),
+            "total_size_bytes": total_size,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading files to session {session_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to upload files: {str(e)}")

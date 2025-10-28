@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { ArrowLeft, Send, Loader2, StopCircle, PanelRightOpen, PanelRightClose, XCircle, CheckCircle, AlertCircle, Maximize2, Minimize2, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, StopCircle, PanelRightOpen, PanelRightClose, XCircle, CheckCircle, AlertCircle, Maximize2, Minimize2, ChevronDown, ChevronRight, Paperclip } from 'lucide-react';
 import { useToolStream } from '../lib/use-tool-stream';
 import { ToolExecutionPanel } from './ToolExecutionPanel';
 import { TodoList } from './TodoList';
@@ -10,6 +10,7 @@ import { ResourceMonitor } from './ResourceMonitor';
 import { FileExplorer } from './FileExplorer';
 import { FileViewer } from './FileViewer';
 import { Timeline } from './Timeline';
+import { FileUploadModal } from './FileUploadModal';
 
 interface ChatInterfaceProps {
   sessionId: string;
@@ -33,6 +34,7 @@ export function ChatInterface({ sessionId, apiKey, onBack }: ChatInterfaceProps)
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<'checking' | 'active' | 'not_found' | 'error'>('checking');
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   // State for Claude-specific events from chat stream
   const [toolEvents, setToolEvents] = useState<any[]>([]);
@@ -708,6 +710,15 @@ export function ChatInterface({ sessionId, apiKey, onBack }: ChatInterfaceProps)
               className="flex-1 px-4 py-2.5 rounded-2xl bg-gray-900/50 border border-gray-800/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-gray-500/50 focus:border-gray-500/50 disabled:opacity-50 transition-all text-sm placeholder:text-gray-500"
               autoFocus
             />
+            <button
+              type="button"
+              onClick={() => setShowUploadModal(true)}
+              disabled={sessionStatus !== 'active'}
+              className="px-3 py-2.5 rounded-2xl bg-gray-800/50 hover:bg-gray-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center"
+              title="Upload files to workspace"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
             {(handleSubmit ? isLoading : manualLoading) && (
               <button
                 type="button"
@@ -753,6 +764,18 @@ export function ChatInterface({ sessionId, apiKey, onBack }: ChatInterfaceProps)
           </form>
         </div>
       </div>
+
+      {/* File Upload Modal */}
+      {showUploadModal && (
+        <FileUploadModal
+          sessionId={sessionId}
+          onClose={() => setShowUploadModal(false)}
+          onUploadComplete={() => {
+            // File explorer auto-refreshes every 3s, so just close modal
+            setShowUploadModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

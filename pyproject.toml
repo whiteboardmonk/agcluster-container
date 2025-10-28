@@ -1,6 +1,6 @@
 [project]
 name = "agcluster-container"
-version = "0.2.0"
+version = "0.3.0"
 description = "Container runtime for Claude Agent SDK instances with OpenAI-compatible API"
 authors = [{name = "AgCluster Team"}]
 readme = "README.md"

@@ -7,6 +7,7 @@ import logging
 import uuid
 from typing import Dict, Any, AsyncIterator
 from datetime import datetime, timezone
+from fastapi import HTTPException
 
 from .base import ContainerProvider, ContainerInfo, ProviderConfig
 
@@ -339,6 +340,82 @@ class FlyProvider(ContainerProvider):
         except Exception as e:
             logger.error(f"Unexpected error querying Fly Machine: {e}")
             yield {"type": "error", "message": f"Unexpected error: {str(e)}"}
+
+    async def upload_files(
+        self, container_id: str, files: list[Dict[str, Any]], target_path: str, overwrite: bool
+    ) -> list[str]:
+        """
+        Upload files to a Fly Machine using HTTP proxy.
+
+        Args:
+            container_id: Machine ID
+            files: List of file dictionaries
+            target_path: Target directory path
+            overwrite: Whether to overwrite existing files
+
+        Returns:
+            list[str]: List of successfully uploaded filenames
+
+        Raises:
+            HTTPException: If upload fails
+        """
+        # Find container info
+        container_info = None
+        for info in self.active_machines.values():
+            if info.container_id == container_id:
+                container_info = info
+                break
+
+        if not container_info:
+            raise HTTPException(status_code=404, detail=f"Machine {container_id} not found")
+
+        url = f"{container_info.endpoint_url}/upload"
+
+        try:
+            # Prepare multipart form data
+            form_data = httpx._multipart.MultipartStream(
+                data={"target_path": target_path, "overwrite": str(overwrite).lower()},
+                files=[
+                    ("files", (file_info["safe_name"], file_info["content"])) for file_info in files
+                ],
+            )
+
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    url, content=form_data, headers={"Content-Type": form_data.content_type}
+                )
+
+                if response.status_code == 409:
+                    # File already exists
+                    raise HTTPException(
+                        status_code=409, detail=response.json().get("detail", "File already exists")
+                    )
+
+                response.raise_for_status()
+                result = response.json()
+
+                logger.info(
+                    f"Uploaded {len(result['uploaded'])} files to Fly Machine {container_id}:{target_path}"
+                )
+
+                return result["uploaded"]
+
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 409:
+                raise HTTPException(
+                    status_code=409, detail=e.response.json().get("detail", "File already exists")
+                )
+            logger.error(f"HTTP error uploading files to Fly Machine {container_id}: {e}")
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Failed to upload files: {e.response.text}",
+            )
+        except httpx.RequestError as e:
+            logger.error(f"Request error uploading files to Fly Machine {container_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to upload files: {str(e)}")
+        except Exception as e:
+            logger.error(f"Error uploading files to Fly Machine {container_id}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to upload files: {str(e)}")
 
     async def list_containers(self) -> list[ContainerInfo]:
         """

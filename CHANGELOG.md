@@ -5,6 +5,39 @@ All notable changes to the AgCluster Container project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-01-28
+
+### Added
+- File upload functionality with drag-and-drop support in Web UI
+- Upload button in chat input and file explorer
+- Real-time directory path validation with debouncing (500ms)
+- Multi-file upload with progress tracking and overwrite protection
+- File size validation (max 50MB per file)
+- `POST /api/files/{session_id}/upload` endpoint with `target_path` and `overwrite` params
+- 9 end-to-end upload tests covering various scenarios
+- Provider abstraction for file upload (Docker and Fly.io)
+
+### Fixed
+- Image preview authentication (using blob fetch + object URL pattern)
+- React hooks ordering issue in FileViewer (error #300)
+- Binary file handling (now shows download UI instead of errors)
+- Upload and download button styling to match app theme (gray)
+- Content-Type validation before JSON parsing
+- 10 provider base/factory tests (implemented `upload_files` abstract method)
+
+### Improved
+- Binary file UI with clickable inline download links
+- Clear messaging for binary files: "This is a binary file and cannot be previewed"
+- Object URL cleanup to prevent memory leaks
+- Error handling with detailed validation messages
+
+### Security
+- Path validation for upload target directories
+- Filename sanitization (removes dangerous characters)
+- Session ownership validation for all file operations
+
+---
+
 ## [0.2.0] - 2025-01-XX
 
 ### 🎉 Major Features

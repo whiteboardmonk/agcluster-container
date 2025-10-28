@@ -6,8 +6,11 @@ import httpx
 import json
 import logging
 import uuid
+import tarfile
+import io
 from typing import Dict, Any, AsyncIterator
 from datetime import datetime, timezone
+from fastapi import HTTPException
 
 from .base import ContainerProvider, ContainerInfo, ProviderConfig
 
@@ -268,6 +271,77 @@ class DockerProvider(ContainerProvider):
         except Exception as e:
             logger.error(f"Unexpected error querying container: {e}")
             yield {"type": "error", "message": f"Unexpected error: {str(e)}"}
+
+    async def upload_files(
+        self, container_id: str, files: list[Dict[str, Any]], target_path: str, overwrite: bool
+    ) -> list[str]:
+        """
+        Upload files to a Docker container using tar archive.
+
+        Args:
+            container_id: Container ID
+            files: List of file dictionaries
+            target_path: Target directory path
+            overwrite: Whether to overwrite existing files
+
+        Returns:
+            list[str]: List of successfully uploaded filenames
+
+        Raises:
+            HTTPException: If upload fails
+        """
+        try:
+            container = self.docker_client.containers.get(container_id)
+        except docker.errors.NotFound:
+            raise HTTPException(status_code=404, detail=f"Container {container_id} not found")
+
+        uploaded_files = []
+
+        try:
+            # Check for existing files if overwrite=False
+            if not overwrite:
+                for file_info in files:
+                    file_path = f"{target_path}/{file_info['safe_name']}"
+                    exec_result = container.exec_run(["test", "-f", file_path])
+                    if exec_result.exit_code == 0:  # File exists
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"File '{file_info['safe_name']}' already exists. "
+                            "Set overwrite=true to replace it.",
+                        )
+
+            # Create tar archive in memory
+            tar_buffer = io.BytesIO()
+            with tarfile.open(fileobj=tar_buffer, mode="w") as tar:
+                for file_info in files:
+                    # Create tarinfo
+                    tarinfo = tarfile.TarInfo(name=file_info["safe_name"])
+                    tarinfo.size = len(file_info["content"])
+                    tarinfo.mode = 0o644  # rw-r--r--
+                    tarinfo.mtime = int(datetime.now(timezone.utc).timestamp())
+
+                    # Add file to tar
+                    tar.addfile(tarinfo, io.BytesIO(file_info["content"]))
+                    uploaded_files.append(file_info["safe_name"])
+
+            # Upload tar archive to container
+            tar_buffer.seek(0)
+            tar_data = tar_buffer.getvalue()
+
+            # Use put_archive to upload files
+            container.put_archive(target_path, tar_data)
+
+            logger.info(
+                f"Uploaded {len(uploaded_files)} files to container {container_id}:{target_path}"
+            )
+
+            return uploaded_files
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error uploading files to container {container_id}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to upload files: {str(e)}")
 
     async def list_containers(self) -> list[ContainerInfo]:
         """

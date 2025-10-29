@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/python-3.11+-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
-[Features](#features) • [Quick Start](#quick-start) • [Web UI](#web-ui) • [Agent Configurations](#agent-configurations) • [API Reference](#api-reference)
+[Screenshots](#screenshots) • [Features](#features) • [Quick Start](#quick-start) • [Web UI](#web-ui) • [Agent Configurations](#agent-configurations) • [API Reference](#api-reference)
 
 </div>
 
@@ -25,6 +25,26 @@
 - File upload, preview, and download
 
 **Current Status:** Alpha (v0.3.0)
+
+---
+
+## Screenshots
+
+### Dashboard & Agent Launching
+![Dashboard](docs/images/screenshot-dashboard-1.webp)
+*Select from preset agent configurations and launch with your Anthropic API key*
+
+### Session Management
+![Sessions](docs/images/screenshot-sessions-2.webp)
+*Monitor active sessions, view resource usage, and manage containers*
+
+### Agent Configuration Builder
+![Builder](docs/images/screenshot-builder3.webp)
+*Visual agent builder with preset templates and custom configuration support*
+
+### Agent Execution
+![Data Agent](docs/images/screenshot-data-agent-4.webp)
+*Real-time tool execution, file operations, and task tracking*
 
 ---
 

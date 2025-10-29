@@ -632,7 +632,6 @@ docker ps | grep agcluster
 
 - **[Agent Configuration](configs/README.md)** - Configuration reference
 - **[Multi-Provider Setup](PROVIDERS.md)** - Deploy on Docker, Fly.io, etc.
-- **[Security Audit](SECURITY_AUDIT_REPORT.md)** - Security features
 - **[Web UI Guide](src/agcluster/container/ui/README.md)** - Dashboard setup
 
 ---

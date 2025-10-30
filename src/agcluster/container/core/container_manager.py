@@ -126,7 +126,11 @@ class ContainerManager:
         logger.info(f"ContainerManager initialized with {self.provider.__class__.__name__}")
 
     async def create_agent_container_from_config(
-        self, api_key: str, config: AgentConfig, config_id: str
+        self,
+        api_key: str,
+        config: AgentConfig,
+        config_id: str,
+        mcp_env: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> AgentContainer:
         """
         Create agent container from configuration using provider.
@@ -135,6 +139,7 @@ class ContainerManager:
             api_key: Anthropic API key
             config: Agent configuration
             config_id: Configuration ID (for tracking)
+            mcp_env: Optional runtime environment variables for MCP servers
 
         Returns:
             AgentContainer instance
@@ -166,6 +171,8 @@ class ContainerManager:
             max_turns=config.max_turns,
             api_key=api_key,
             platform_credentials={},  # TODO: Add platform-specific creds when needed
+            mcp_servers=config.mcp_servers,  # Pass MCP servers from config
+            mcp_env=mcp_env,  # Pass runtime MCP environment variables
         )
 
         # Create container via provider

@@ -71,20 +71,48 @@ class DockerProvider(ContainerProvider):
                 # It's a Pydantic model (SystemPromptPreset), convert to dict
                 system_prompt_value = system_prompt_value.model_dump()
 
+            # Build agent config JSON with MCP servers if configured
+            agent_config_dict = {
+                "id": config.platform,
+                "name": f"Agent {agent_id}",
+                "allowed_tools": config.allowed_tools,
+                "system_prompt": system_prompt_value,
+                "permission_mode": "acceptEdits",
+                "max_turns": config.max_turns,
+            }
+
+            # Add MCP servers if configured
+            if config.mcp_servers:
+                agent_config_dict["mcp_servers"] = config.mcp_servers
+                logger.info(f"Added {len(config.mcp_servers)} MCP server(s) to agent config")
+
             env = {
                 "AGENT_ID": agent_id,
                 "ANTHROPIC_API_KEY": config.api_key,
-                "AGENT_CONFIG_JSON": json.dumps(
-                    {
-                        "id": config.platform,
-                        "name": f"Agent {agent_id}",
-                        "allowed_tools": config.allowed_tools,
-                        "system_prompt": system_prompt_value,
-                        "permission_mode": "acceptEdits",
-                        "max_turns": config.max_turns,
-                    }
-                ),
+                "AGENT_CONFIG_JSON": json.dumps(agent_config_dict),
             }
+
+            # Merge MCP environment variables if provided
+            if config.mcp_env:
+                for server_name, server_env in config.mcp_env.items():
+                    for env_key, env_value in server_env.items():
+                        env[env_key] = env_value
+                        logger.info(f"Added MCP env var {env_key} for server {server_name}")
+
+            # Also check for environment variable substitution in MCP server configs
+            if config.mcp_servers:
+                for server_name, server_config in config.mcp_servers.items():
+                    if "env" in server_config:
+                        for env_key, env_value in server_config["env"].items():
+                            # If value starts with ${, check if it's already in env
+                            # Otherwise use the literal value
+                            if isinstance(env_value, str) and env_value.startswith("${"):
+                                # Skip - will be resolved at runtime
+                                pass
+                            else:
+                                # Use literal value from config
+                                if env_key not in env:
+                                    env[env_key] = env_value
 
             # Create container
             container = self.docker_client.containers.run(

@@ -7,7 +7,7 @@ providers must implement, along with shared data models.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Any, AsyncIterator
+from typing import Dict, Any, AsyncIterator, Optional
 
 
 @dataclass
@@ -45,6 +45,8 @@ class ProviderConfig:
         max_turns: Maximum conversation turns
         api_key: Anthropic API key
         platform_credentials: Platform-specific authentication credentials
+        mcp_servers: MCP server configurations (optional)
+        mcp_env: Runtime environment variables for MCP servers (optional)
     """
 
     platform: str
@@ -56,6 +58,8 @@ class ProviderConfig:
     max_turns: int
     api_key: str
     platform_credentials: Dict[str, Any] = field(default_factory=dict)
+    mcp_servers: Optional[Dict[str, Any]] = None
+    mcp_env: Optional[Dict[str, Dict[str, str]]] = None
 
 
 class ContainerProvider(ABC):

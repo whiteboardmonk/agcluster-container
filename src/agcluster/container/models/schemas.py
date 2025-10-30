@@ -115,6 +115,10 @@ class LaunchRequest(BaseModel):
     provider: Optional[str] = Field(
         None, description="Container provider (docker, fly_machines, cloudflare, vercel)"
     )
+    mcp_env: Optional[Dict[str, Dict[str, str]]] = Field(
+        None,
+        description="Runtime environment variables for MCP servers (e.g., {'github': {'GITHUB_PERSONAL_ACCESS_TOKEN': 'ghp_...'}})",
+    )
 
     def validate_config_or_id(self):
         """Ensure either config_id or config is provided"""

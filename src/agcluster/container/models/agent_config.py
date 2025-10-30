@@ -1,6 +1,6 @@
 """Agent configuration models - mirrors Claude SDK's ClaudeAgentOptions"""
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, Dict, List, Literal, Union
 from datetime import datetime
 
@@ -162,6 +162,32 @@ class AgentConfig(BaseModel):
             )
 
         return v
+
+    @model_validator(mode="after")
+    def auto_allow_mcp_tools(self) -> "AgentConfig":
+        """
+        Automatically allow MCP tools from configured servers.
+
+        If mcp_servers are configured, automatically grants permission to use
+        ListMcpResources and ReadMcpResource tools. This eliminates the need
+        to explicitly list these tools in allowed_tools.
+        """
+        if self.mcp_servers:
+            # Add base MCP tools if not already present
+            base_mcp_tools = ["ListMcpResources", "ReadMcpResource"]
+            for tool in base_mcp_tools:
+                if tool not in self.allowed_tools:
+                    self.allowed_tools.append(tool)
+
+            # Log which servers are configured (helps with debugging)
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"Auto-enabled MCP tools for {len(self.mcp_servers)} server(s): {list(self.mcp_servers.keys())}"
+            )
+
+        return self
 
     class Config:
         json_schema_extra = {

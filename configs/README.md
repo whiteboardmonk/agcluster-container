@@ -47,7 +47,69 @@ This directory contains pre-configured agent templates that can be used to launc
 
 ---
 
-### 3. Full-Stack Team (`fullstack-team.yaml`)
+### 3. Data Analysis Agent (`data-analysis.yaml`)
+
+**Purpose:** Statistical analysis and data visualization
+
+**Features:**
+- Pandas, numpy, scipy, matplotlib support
+- NotebookEdit for Jupyter-style workflows
+- Bash for data processing scripts
+- Optimized for exploratory data analysis
+
+**Best For:**
+- Statistical testing
+- Data cleaning and transformation
+- Visualization and plotting
+- ML model evaluation
+- Interactive data debugging
+
+**Resource Allocation:** 2 CPUs, 6GB RAM
+
+---
+
+### 4. GitHub Code Review (`github-code-review.yaml`)
+
+**Purpose:** Automated GitHub pull request reviews
+
+**Features:**
+- **MCP Integration**: Uses GitHub MCP server for API access
+- Systematic code review with focus on:
+  - Code quality and maintainability
+  - Security vulnerabilities
+  - Performance optimizations
+  - Testing coverage
+  - Architecture patterns
+- Auto-enabled MCP tools (ListMcpResources, ReadMcpResource)
+- Runtime credential injection via `mcp_env`
+
+**Best For:**
+- Automated PR reviews
+- Security audits
+- Code quality checks
+- Architecture analysis
+- Best practices enforcement
+
+**Resource Allocation:** 1 CPU, 2GB RAM
+
+**Usage with Credentials:**
+```bash
+curl -X POST http://localhost:8000/api/agents/launch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "sk-ant-...",
+    "config_id": "github-code-review",
+    "mcp_env": {
+      "github": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+      }
+    }
+  }'
+```
+
+---
+
+### 5. Full-Stack Team (`fullstack-team.yaml`)
 
 **Purpose:** Multi-agent orchestration for complex projects
 
@@ -152,14 +214,47 @@ agents:
 
 ### MCP Server Integration
 
+AgCluster supports the Model Context Protocol (MCP) for integrating external tools and services. MCP servers are defined in configuration files and credentials are provided at launch time.
+
+**Configuration Structure:**
 ```yaml
 mcp_servers:
-  github:
-    command: npx
-    args: ["-y", "@modelcontextprotocol/server-github"]
+  github:                                          # Server name
+    command: npx                                   # Executable
+    args: ["-y", "@modelcontextprotocol/server-github"]  # Arguments
     env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}  # Placeholder
 ```
+
+**Runtime Credentials:**
+
+Provide actual credentials via the `mcp_env` parameter when launching agents:
+
+```bash
+curl -X POST http://localhost:8000/api/agents/launch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "sk-ant-...",
+    "config_id": "github-code-review",
+    "mcp_env": {
+      "github": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_your_token_here"
+      }
+    }
+  }'
+```
+
+**Key Features:**
+- **Auto-Allow MCP Tools**: When `mcp_servers` are configured, `ListMcpResources` and `ReadMcpResource` are automatically added to `allowed_tools`
+- **Environment Variable Merging**: Runtime `mcp_env` overrides config-defined placeholders
+- **Multi-Provider Support**: MCP works with Docker, Fly.io, and other providers
+- **Tool Discovery**: Agents can list and read available MCP resources
+
+**Available MCP Servers:**
+- `@modelcontextprotocol/server-github` - GitHub API integration
+- `@modelcontextprotocol/server-filesystem` - File system access
+- `@modelcontextprotocol/server-postgres` - PostgreSQL integration
+- Custom MCP servers (see [MCP docs](https://modelcontextprotocol.io))
 
 ---
 
@@ -202,13 +297,25 @@ permission_mode: acceptEdits
 ```yaml
 id: github-bot
 name: GitHub Bot
-allowed_tools: ["mcp__github__create_issue", "mcp__github__list_prs"]
+# Note: ListMcpResources and ReadMcpResource are auto-added
+# No need to explicitly list mcp__* tools
+allowed_tools: ["Read", "Write"]
 mcp_servers:
   github:
     command: npx
     args: ["-y", "@modelcontextprotocol/server-github"]
     env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}  # Placeholder
+```
+
+Launch with actual credentials:
+```bash
+curl -X POST http://localhost:8000/api/agents/launch \
+  -d '{
+    "api_key": "sk-ant-...",
+    "config_id": "github-bot",
+    "mcp_env": {"github": {"GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."}}
+  }'
 ```
 
 ### Multi-Agent Team

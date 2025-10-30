@@ -61,12 +61,14 @@
 
 ### Agent Configuration System
 
-- **Preset Configurations** - 4 ready-to-use templates:
+- **Preset Configurations** - 5 ready-to-use templates:
   - `code-assistant` - Full-stack development
   - `research-agent` - Web research and analysis
   - `data-analysis` - Statistical analysis with Jupyter
+  - `github-code-review` - GitHub PR reviews with MCP integration
   - `fullstack-team` - Multi-agent orchestration with sub-agents
 - **Custom Configurations** - Define agents with specific tools and limits
+- **MCP Server Support** - Integrate external tools via Model Context Protocol
 - **Tool Specialization** - Configure which tools each agent can access
 - **Resource Management** - Per-agent CPU, memory, storage limits
 
@@ -207,7 +209,31 @@ Statistical analysis and data visualization
 - **Resources**: 2 CPUs, 6GB RAM, 15GB storage
 - **Use Cases**: Exploratory data analysis, statistical testing, Jupyter workflows
 
-#### 4. Full-Stack Team (`fullstack-team`)
+#### 4. GitHub Code Review (`github-code-review`)
+
+GitHub PR review agent with MCP integration
+
+- **Tools**: Read, Write, Grep, TodoWrite
+- **MCP Servers**: GitHub MCP server for PR/issue operations
+- **Resources**: 1 CPU, 2GB RAM, 5GB storage
+- **Use Cases**: Automated PR reviews, security scanning, code quality checks
+
+**Launch with GitHub token:**
+```bash
+curl -X POST http://localhost:8000/api/agents/launch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "sk-ant-...",
+    "config_id": "github-code-review",
+    "mcp_env": {
+      "github": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+      }
+    }
+  }'
+```
+
+#### 5. Full-Stack Team (`fullstack-team`)
 
 Multi-agent orchestrator with specialized sub-agents
 
@@ -387,6 +413,19 @@ Launch a new agent from configuration.
 {
   "api_key": "sk-ant-...",
   "config_id": "code-assistant"
+}
+```
+
+**With MCP credentials:**
+```json
+{
+  "api_key": "sk-ant-...",
+  "config_id": "github-code-review",
+  "mcp_env": {
+    "github": {
+      "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+    }
+  }
 }
 ```
 

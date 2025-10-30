@@ -245,7 +245,7 @@ async def verify_session_access(
 
 
 def build_file_tree(paths: List[str]) -> Dict[str, Any]:
-    """Convert flat path list to nested tree structure"""
+    """Convert flat path list to nested tree structure (legacy, kept for compatibility)"""
     tree = {"name": "workspace", "type": "directory", "path": "/", "children": []}
 
     for path in paths:
@@ -285,6 +285,62 @@ def build_file_tree(paths: List[str]) -> Dict[str, Any]:
     return tree
 
 
+def build_file_tree_with_types(typed_paths: List[tuple]) -> Dict[str, Any]:
+    """
+    Convert flat path list with type information to nested tree structure.
+
+    Args:
+        typed_paths: List of (type_marker, path) tuples where type_marker is 'f' or 'd'
+
+    Returns:
+        Tree structure with accurate file/directory type information
+    """
+    tree = {"name": "workspace", "type": "directory", "path": "/", "children": []}
+
+    # Create a map of paths to their types
+    path_types = {path: type_marker for type_marker, path in typed_paths}
+
+    for type_marker, path in typed_paths:
+        if not path or path == "/workspace":
+            continue
+
+        # Remove /workspace prefix and split into parts
+        relative_path = path.replace("/workspace/", "").replace("/workspace", "")
+        if not relative_path:
+            continue
+
+        parts = relative_path.split("/")
+        current = tree
+
+        for i, part in enumerate(parts):
+            if not part:  # Skip empty parts
+                continue
+
+            # Find or create node
+            existing = next((c for c in current.get("children", []) if c["name"] == part), None)
+
+            if existing:
+                current = existing
+            else:
+                # Build full path from root
+                full_path = "/".join(parts[: i + 1])
+
+                # Determine if this is a file or directory based on actual type
+                # Check if this exact path exists in our typed_paths
+                full_abs_path = f"/workspace/{full_path}"
+                is_file = path_types.get(full_abs_path) == "f"
+
+                node = {"name": part, "type": "file" if is_file else "directory", "path": full_path}
+
+                if not is_file:
+                    node["children"] = []
+
+                current.setdefault("children", []).append(node)
+                current = node
+
+    return tree
+
+
 @router.get("/api/files/{session_id}")
 async def list_workspace_files(session_id: str, api_key: str = Depends(verify_session_access)):
     """
@@ -305,9 +361,12 @@ async def list_workspace_files(session_id: str, api_key: str = Depends(verify_se
             container.container_id
         )
 
-        # Execute find command to list all files and directories
+        # Execute find command with explicit type markers
+        # Output format: <type>:<path> where type is 'f' for file, 'd' for directory
         exec_result = docker_container.exec_run(
-            "find /workspace -type f -o -type d", stdout=True, stderr=True
+            "sh -c \"find /workspace -type f -exec echo 'f:{}' \\; -o -type d -exec echo 'd:{}' \\;\"",
+            stdout=True,
+            stderr=True,
         )
 
         if exec_result.exit_code != 0:
@@ -315,21 +374,29 @@ async def list_workspace_files(session_id: str, api_key: str = Depends(verify_se
             logger.error(f"Failed to list files: {error_msg}")
             raise HTTPException(status_code=500, detail="Failed to list files")
 
-        # Parse output
+        # Parse output with type information
         output = exec_result.output.decode().strip()
-        paths = output.split("\n") if output else []
+        lines = output.split("\n") if output else []
 
-        # Build tree structure
-        tree = build_file_tree(paths)
+        # Parse lines into (type, path) tuples
+        typed_paths = []
+        for line in lines:
+            if not line or ":" not in line:
+                continue
+            type_marker, path = line.split(":", 1)
+            typed_paths.append((type_marker, path))
 
-        # Count files
-        file_count = len([p for p in paths if p and "." in Path(p).name])
+        # Build tree structure with correct type information
+        tree = build_file_tree_with_types(typed_paths)
+
+        # Count files (type_marker == 'f')
+        file_count = len([t for t, p in typed_paths if t == "f"])
 
         return {
             "root": "/workspace",
             "tree": tree,
             "total_files": file_count,
-            "total_items": len(paths),
+            "total_items": len(typed_paths),
         }
 
     except Exception as e:

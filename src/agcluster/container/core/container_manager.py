@@ -166,6 +166,7 @@ class ContainerManager:
             max_turns=config.max_turns,
             api_key=api_key,
             platform_credentials={},  # TODO: Add platform-specific creds when needed
+            extra_files=config.extra_files or {},
         )
 
         # Create container via provider

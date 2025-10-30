@@ -46,6 +46,23 @@ def load_config_from_file(file_path: Union[str, Path]) -> AgentConfig:
         with open(file_path, "r") as f:
             config_data = yaml.safe_load(f)
 
+        # Auto-load extra files from directory with same name as config
+        config_dir = file_path.parent / file_path.stem
+        if config_dir.exists() and config_dir.is_dir():
+            logger.info(f"Auto-loading extra files from {config_dir}")
+            extra_files = {}
+            for extra_file in config_dir.rglob("*"):
+                if extra_file.is_file():
+                    # Use relative path from config_dir as the key
+                    relative_path = extra_file.relative_to(config_dir)
+                    logger.debug(f"Loading extra file: {relative_path}")
+                    with open(extra_file, "rb") as f:
+                        extra_files[str(relative_path)] = f.read()
+
+            if extra_files:
+                config_data["extra_files"] = extra_files
+                logger.info(f"Loaded {len(extra_files)} extra files from {config_dir}")
+
         # Validate and create AgentConfig
         config = AgentConfig(**config_data)
 

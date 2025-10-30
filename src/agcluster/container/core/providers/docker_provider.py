@@ -136,6 +136,45 @@ class DockerProvider(ContainerProvider):
             except TimeoutError:
                 logger.warning("Health check timed out, but container is running")
 
+            # Upload extra files if provided
+            if config.extra_files:
+                logger.info(f"Uploading {len(config.extra_files)} extra files to container")
+                try:
+                    # Create tar archive in memory
+                    tar_buffer = io.BytesIO()
+                    with tarfile.open(fileobj=tar_buffer, mode="w") as tar:
+                        for file_path, content in config.extra_files.items():
+                            logger.debug(
+                                f"Adding file to tar: {file_path} (size: {len(content)} bytes)"
+                            )
+
+                            # Create tarinfo
+                            tarinfo = tarfile.TarInfo(name=file_path)
+                            tarinfo.size = len(content)
+                            tarinfo.mode = 0o644  # rw-r--r--
+                            tarinfo.mtime = int(datetime.now(timezone.utc).timestamp())
+                            tarinfo.type = tarfile.REGTYPE  # Explicitly mark as regular file
+
+                            # Add file to tar
+                            tar.addfile(tarinfo, io.BytesIO(content))
+
+                            logger.debug(
+                                f"Added to tar: {file_path} - type={tarinfo.type}, "
+                                f"isfile={tarinfo.isfile()}, isdir={tarinfo.isdir()}"
+                            )
+
+                    # Upload tar archive to container workspace
+                    tar_buffer.seek(0)
+                    tar_data = tar_buffer.getvalue()
+                    container.put_archive("/workspace", tar_data)
+
+                    logger.info(
+                        f"Successfully uploaded {len(config.extra_files)} extra files to /workspace"
+                    )
+                except Exception as e:
+                    logger.error(f"Error uploading extra files: {e}")
+                    # Continue even if upload fails - don't fail container creation
+
             # Create container info with API key hash for session ownership validation
             import hashlib
 

@@ -45,6 +45,7 @@ class ProviderConfig:
         max_turns: Maximum conversation turns
         api_key: Anthropic API key
         platform_credentials: Platform-specific authentication credentials
+        extra_files: Extra files to mount in the container (key: relative path, value: content in bytes)
     """
 
     platform: str
@@ -56,6 +57,7 @@ class ProviderConfig:
     max_turns: int
     api_key: str
     platform_credentials: Dict[str, Any] = field(default_factory=dict)
+    extra_files: Dict[str, bytes] = field(default_factory=dict)
 
 
 class ContainerProvider(ABC):

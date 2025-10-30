@@ -83,6 +83,77 @@ class TestLoadConfigFromFile:
         with pytest.raises(ValueError):
             load_config_from_file(config_file)
 
+    def test_auto_load_extra_files(self, tmp_path):
+        """Test auto-loading extra files from directory with same name as config"""
+        # Create config file
+        config_file = tmp_path / "test-agent.yaml"
+        config_data = {"id": "test-agent", "name": "Test Agent", "allowed_tools": ["Bash", "Read"]}
+
+        with open(config_file, "w") as f:
+            yaml.dump(config_data, f)
+
+        # Create directory with same name and add files
+        extra_files_dir = tmp_path / "test-agent"
+        extra_files_dir.mkdir()
+
+        # Create some test files
+        (extra_files_dir / "file1.txt").write_text("content1")
+        (extra_files_dir / "file2.py").write_text("print('hello')")
+
+        # Create subdirectory with file
+        subdir = extra_files_dir / "subdir"
+        subdir.mkdir()
+        (subdir / "nested.md").write_text("# Nested file")
+
+        # Load config
+        config = load_config_from_file(config_file)
+
+        # Verify extra files were loaded
+        assert config.extra_files is not None
+        assert len(config.extra_files) == 3
+
+        # Check file paths and contents
+        assert "file1.txt" in config.extra_files
+        assert config.extra_files["file1.txt"] == b"content1"
+
+        assert "file2.py" in config.extra_files
+        assert config.extra_files["file2.py"] == b"print('hello')"
+
+        assert "subdir/nested.md" in config.extra_files or "subdir\\nested.md" in config.extra_files
+
+    def test_no_extra_files_directory(self, tmp_path):
+        """Test that config loads normally when no extra files directory exists"""
+        config_file = tmp_path / "simple-agent.yaml"
+        config_data = {"id": "simple-agent", "name": "Simple Agent", "allowed_tools": ["Bash"]}
+
+        with open(config_file, "w") as f:
+            yaml.dump(config_data, f)
+
+        # No extra files directory created
+
+        config = load_config_from_file(config_file)
+
+        # Should load successfully without extra_files
+        assert config.id == "simple-agent"
+        assert config.extra_files is None or len(config.extra_files) == 0
+
+    def test_empty_extra_files_directory(self, tmp_path):
+        """Test handling of empty extra files directory"""
+        config_file = tmp_path / "empty-agent.yaml"
+        config_data = {"id": "empty-agent", "name": "Empty Agent", "allowed_tools": ["Bash"]}
+
+        with open(config_file, "w") as f:
+            yaml.dump(config_data, f)
+
+        # Create empty directory
+        extra_files_dir = tmp_path / "empty-agent"
+        extra_files_dir.mkdir()
+
+        config = load_config_from_file(config_file)
+
+        # Should not have extra_files if directory is empty
+        assert config.extra_files is None or len(config.extra_files) == 0
+
 
 class TestLoadConfigFromId:
     """Test loading config by ID"""

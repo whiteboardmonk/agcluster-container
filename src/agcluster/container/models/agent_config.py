@@ -109,6 +109,11 @@ class AgentConfig(BaseModel):
         None, description="Filesystem settings to load"
     )
 
+    # Extra files in container
+    extra_files: Optional[Dict[str, bytes]] = Field(
+        None, description="Extra files to mount in the container (key: relative path, value: content in bytes)"
+    )
+
     # Metadata
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

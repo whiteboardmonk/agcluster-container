@@ -1,0 +1,26 @@
+# Research Agent - Web research and analysis specialist
+#
+# Optimized for gathering information from the web, analyzing content,
+# and synthesizing findings into coherent reports.
+id: custom
+name: Custom
+description: For file test
+version: 1.0.0
+
+system_prompt: |
+  For file test
+
+allowed_tools:
+  - Read
+  - Write
+  - Grep
+  - TodoWrite
+
+permission_mode: acceptEdits
+
+resource_limits:
+  cpu_quota: 100000  # 1 CPU (lighter workload)
+  memory_limit: 2g
+  storage_limit: 5g
+
+max_turns: 50

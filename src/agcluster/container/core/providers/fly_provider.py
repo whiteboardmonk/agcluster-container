@@ -96,7 +96,20 @@ class FlyProvider(ContainerProvider):
 
         # Add MCP servers if configured
         if config.mcp_servers:
-            agent_config_dict["mcp_servers"] = config.mcp_servers
+            # Convert Pydantic models to dicts for JSON serialization
+            mcp_servers_dict = {}
+            for server_name, server_config in config.mcp_servers.items():
+                if hasattr(server_config, "model_dump"):
+                    # Pydantic v2
+                    mcp_servers_dict[server_name] = server_config.model_dump(exclude_none=True)
+                elif hasattr(server_config, "dict"):
+                    # Pydantic v1
+                    mcp_servers_dict[server_name] = server_config.dict(exclude_none=True)
+                else:
+                    # Already a dict
+                    mcp_servers_dict[server_name] = server_config
+
+            agent_config_dict["mcp_servers"] = mcp_servers_dict
             logger.info(f"Added {len(config.mcp_servers)} MCP server(s) to agent config")
 
         # Prepare environment variables
@@ -116,8 +129,15 @@ class FlyProvider(ContainerProvider):
         # Also check for environment variable substitution in MCP server configs
         if config.mcp_servers:
             for server_name, server_config in config.mcp_servers.items():
-                if "env" in server_config:
-                    for env_key, env_value in server_config["env"].items():
+                # Convert to dict if it's a Pydantic model
+                server_dict = server_config
+                if hasattr(server_config, "model_dump"):
+                    server_dict = server_config.model_dump(exclude_none=True)
+                elif hasattr(server_config, "dict"):
+                    server_dict = server_config.dict(exclude_none=True)
+
+                if "env" in server_dict:
+                    for env_key, env_value in server_dict["env"].items():
                         # If value starts with ${, check if it's already in env
                         # Otherwise use the literal value
                         if isinstance(env_value, str) and env_value.startswith("${"):

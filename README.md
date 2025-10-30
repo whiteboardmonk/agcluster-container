@@ -556,22 +556,69 @@ See `configs/README.md` for complete documentation.
 
 ## Development
 
-### Setup Development Environment
+### Local Development (Without Docker)
+
+Develop and test the API and Web UI locally without Docker for faster iteration.
+
+#### 1. Python API Backend
 
 ```bash
-# Clone repository
+# 1. Clone repository
 git clone https://github.com/whiteboardmonk/agcluster-container.git
 cd agcluster-container
 
-# Install dependencies
+# 2. Create virtual environment
+python3.11 -m venv .venv
+
+# 3. Activate virtual environment
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# 4. Install dependencies
 pip install -r requirements.txt
 pip install -e ".[dev]"
 
-# Run locally (without Docker)
+# 5. Configure environment
+cp .env.example .env
+# Edit .env: ensure API_HOST=0.0.0.0, API_PORT=8000, API_DEBUG=true
+
+# 6. Start API server (with hot reload)
+python -m uvicorn agcluster.container.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Or use the project's main script
 python -m agcluster.container.api.main
 ```
 
+**API now running at**: `http://localhost:8000`
+
+**Verify:**
+```bash
+curl http://localhost:8000/health
+# Should return: {"status":"healthy","version":"..."}
+```
+
+#### 2. Next.js Web UI Frontend
+
+```bash
+# 1. Navigate to UI directory
+cd src/agcluster/container/ui
+
+# 2. Install Node.js dependencies
+npm install
+
+# 3. Start development server (with hot reload)
+npm run dev
+```
+
+**UI now running at**: `http://localhost:3000`
+
+**Note**: The UI automatically connects to `http://localhost:8000`. To change the API URL, create `.env.local`:
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
 ### Build Docker Images
+
+For production deployment or testing with containers:
 
 ```bash
 # Build agent image
@@ -580,11 +627,17 @@ docker build -t agcluster/agent:latest -f docker/Dockerfile.agent .
 # Build API image
 docker build -t agcluster/agent-api:latest -f Dockerfile .
 
-# Or build both
+# Build UI image
+cd src/agcluster/container/ui
+docker build -t agcluster/agent-ui:latest -f Dockerfile .
+
+# Or build all with docker compose
 docker compose build
 ```
 
 ### Run Tests
+
+#### Python Tests
 
 ```bash
 # Install package
@@ -600,12 +653,51 @@ pytest --cov=agcluster.container tests/
 pytest tests/unit/           # Unit tests
 pytest tests/integration/    # Integration tests
 pytest tests/e2e/           # E2E tests (require Docker)
+
+# Run with verbose output
+pytest tests/ -v
 ```
 
 **Test Coverage:**
 - Unit tests - Core components, providers, configuration
 - Integration tests - API endpoints, file operations
 - E2E tests - Full workflows with Docker containers
+
+#### UI Tests
+
+```bash
+cd src/agcluster/container/ui
+
+# Unit tests (Vitest)
+npm run test
+
+# Unit tests with UI
+npm run test:ui
+
+# Coverage report
+npm run test:coverage
+
+# E2E tests (Playwright)
+npm run test:e2e
+
+# E2E with UI
+npm run test:e2e:ui
+```
+
+### Code Quality
+
+```bash
+# Python formatting and linting
+black src/ tests/
+ruff check src/ tests/
+
+# Type checking
+mypy src/
+
+# UI linting
+cd src/agcluster/container/ui
+npm run lint
+```
 
 ### Monitoring
 
@@ -616,6 +708,9 @@ docker compose logs -f
 
 # API only
 docker compose logs -f api
+
+# UI only
+docker compose logs -f ui
 
 # Specific container
 docker logs <container-id>
@@ -715,11 +810,14 @@ docker network inspect agcluster-container_agcluster-network
 ### Tests failing
 
 ```bash
-# Reinstall dependencies
+# Python tests
 pip install -e ".[dev]"
-
-# Run with verbose output
 pytest tests/ -v
+
+# UI tests
+cd src/agcluster/container/ui
+npm install
+npm run test
 ```
 
 Need help? [Open an issue](https://github.com/whiteboardmonk/agcluster-container/issues)

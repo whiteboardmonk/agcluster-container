@@ -38,6 +38,7 @@ export interface LaunchAgentRequest {
   api_key: string;
   config_id?: string;
   config?: AgentConfig;
+  mcp_env?: Record<string, Record<string, string>>;
 }
 
 export interface LaunchAgentResponse {

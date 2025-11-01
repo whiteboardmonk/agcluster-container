@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useChat } from '@ai-sdk/react';
 import { X, Send, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -27,14 +26,73 @@ export function TestAgentModal({ config, onClose }: TestAgentModalProps) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [launching, setLaunching] = useState(false);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: '/api/ai/chat',
-    id: sessionId || undefined,
-    body: {
-      sessionId,
-      apiKey,
-    },
-  });
+  // Simplified chat state - AI SDK v5 compatibility
+  const [messages, setMessages] = useState<any[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || !sessionId) return;
+
+    const userMessage = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      // Simple chat implementation
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+          sessionId,
+          apiKey,
+        }),
+      });
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.type === 'text-delta' && parsed.delta) {
+                  assistantContent += parsed.delta;
+                }
+              } catch (e) {
+                // Ignore parse errors
+              }
+            }
+          }
+        }
+      }
+
+      setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }]);
+    } catch (error) {
+      console.error('Chat error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const launchTest = async () => {
     if (!apiKey) {

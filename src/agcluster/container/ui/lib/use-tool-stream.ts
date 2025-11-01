@@ -4,6 +4,7 @@ export interface ToolEvent {
   type: 'tool_start' | 'tool_progress' | 'tool_complete' | 'tool_error';
   tool_name: string;
   tool_input?: unknown;
+  output?: string | object;
   timestamp: string;
   status: string;
   duration_ms?: number;

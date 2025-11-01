@@ -21,6 +21,24 @@ export interface ToolEvent {
 }
 
 /**
+ * Todo item type for task tracking
+ */
+export interface TodoItem {
+  content: string;
+  activeForm?: string;
+  status: 'pending' | 'in_progress' | 'completed';
+}
+
+/**
+ * Thinking event type for Claude's reasoning process
+ */
+export interface ThinkingEvent {
+  type: 'thinking';
+  content: string;
+  timestamp: string;
+}
+
+/**
  * Hook to track tool stream connection status
  *
  * This hook monitors whether the tool stream is connected and ready

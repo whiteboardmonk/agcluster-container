@@ -128,17 +128,17 @@ describe('types helper functions', () => {
     });
 
     it('should return false for null', () => {
-      expect(isSystemPromptPreset(null)).toBe(false);
+      expect(isSystemPromptPreset(null as any)).toBe(false);
     });
 
     it('should return false for empty string', () => {
-      expect(isSystemPromptPreset('')).toBe(false);
+      expect(isSystemPromptPreset('' as any)).toBe(false);
     });
 
     it('should return false for objects without type property', () => {
       const invalidPreset = {
         preset: 'claude_code',
-      };
+      } as any;
 
       expect(isSystemPromptPreset(invalidPreset)).toBe(false);
     });

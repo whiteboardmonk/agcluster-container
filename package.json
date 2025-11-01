@@ -1,6 +1,6 @@
 {
   "name": "agcluster-container",
-  "version": "1.0.0",
+  "version": "0.3.1",
   "description": "<div align=\"center\">",
   "main": "index.js",
   "directories": {

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useMemo } from 'react';
-import { Message } from 'ai';
 import { MessageCard } from './MessageCard';
 import { ThinkingCard } from './ThinkingCard';
 import { ToolEventCard } from './ToolEventCard';
@@ -13,6 +12,7 @@ interface TimelineMessage {
   role: 'user' | 'assistant';
   content: string;
   createdAt?: Date;
+  timestamp?: number;
 }
 
 interface TimelineEvent {
@@ -22,7 +22,7 @@ interface TimelineEvent {
 }
 
 interface TimelineProps {
-  messages: Message[];
+  messages: TimelineMessage[];
   thinkingEvents: ThinkingEvent[];
   toolEvents: ToolEvent[];
   isLoading?: boolean;

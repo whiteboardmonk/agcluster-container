@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useChat } from '@ai-sdk/react';
 import { ArrowLeft, Send, Loader2, StopCircle, PanelRightOpen, PanelRightClose, XCircle, CheckCircle, AlertCircle, Maximize2, Minimize2, ChevronDown, ChevronRight, Paperclip } from 'lucide-react';
 import { useToolStream } from '../lib/use-tool-stream';
 import { ToolExecutionPanel } from './ToolExecutionPanel';
@@ -75,146 +74,6 @@ export function ChatInterface({ sessionId, apiKey, onBack }: ChatInterfaceProps)
   // Log for debugging
   console.log('[ChatInterface] Mounted with apiKey:', apiKey ? 'Set' : 'Empty');
   console.log('[ChatInterface] sessionStatus:', sessionStatus);
-
-  // Override fetch to intercept and parse custom events
-  const originalFetch = global.fetch;
-
-  // NOW we can safely call useChat because we have an API key
-  const chatProps = useChat({
-    api: '/api/ai/chat',
-    id: sessionId,
-    body: {
-      sessionId,
-      apiKey,
-    },
-    onError: (error) => {
-      console.error('Chat error:', error);
-    },
-    fetch: async (input, init) => {
-      console.log('[Custom Fetch] Intercepting request');
-
-      const response = await originalFetch(input, init);
-
-      // Clone the response so we can read it twice
-      const clonedResponse = response.clone();
-
-      // Parse the stream for custom events in the background
-      (async () => {
-        try {
-          const reader = clonedResponse.body?.getReader();
-          if (!reader) return;
-
-          const decoder = new TextDecoder();
-          let buffer = '';
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6).trim();
-                if (!data || data === '[DONE]') continue;
-
-                try {
-                  const parsed = JSON.parse(data);
-
-                  // Process custom events
-                  if (parsed.type === 'custom' && parsed.value) {
-                    const event = parsed.value;
-                    console.log('[Stream Interceptor] Custom event:', event.type, event);
-
-                    switch (event.type) {
-                      case 'tool':
-                        setToolEvents(prev => {
-                          const toolType = event.tool_type || event.type;
-                          if (toolType === 'tool_start') {
-                            return [...prev, { ...event, type: 'tool_start' }];
-                          } else if (toolType === 'tool_complete') {
-                            return [...prev, { ...event, type: 'tool_complete' }];
-                          }
-                          return [...prev, event];
-                        });
-                        break;
-
-                      case 'thinking':
-                        setThinkingEvents(prev => [...prev, event]);
-                        break;
-
-                      case 'todo':
-                        if (event.todos) {
-                          setTodos(event.todos);
-                        }
-                        break;
-
-                      case 'plan':
-                      case 'file':
-                      case 'multi-agent':
-                        // Ignored - panels removed
-                        break;
-                    }
-                  }
-                } catch (e) {
-                  // Ignore parse errors
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.error('[Stream Interceptor] Error:', error);
-        }
-      })();
-
-      // Return the original response for useChat to process
-      return response;
-    },
-  });
-
-  console.log('[ChatInterface] useChat returned:', {
-    hasMessages: !!chatProps.messages,
-    hasInput: !!chatProps.input,
-    inputValue: chatProps.input,
-    hasHandleInputChange: !!chatProps.handleInputChange,
-    hasHandleSubmit: !!chatProps.handleSubmit,
-    allKeys: Object.keys(chatProps),
-  });
-
-  const {
-    messages = [],
-    input = '',
-    handleInputChange,
-    handleSubmit,
-    isLoading,
-    error,
-    data
-  } = chatProps;
-
-  console.log('[ChatInterface] Input state:', {
-    inputValue: JSON.stringify(input),
-    hasInput: !!input,
-    inputLength: input.length,
-    inputType: typeof input,
-    trim: input.trim()
-  });
-  console.log('[ChatInterface] Send button condition:', {
-    isLoading,
-    isLoadingBool: !!isLoading,
-    hasInput: !!input,
-    inputTrimmed: input.trim(),
-    sessionStatusIsActive: sessionStatus === 'active',
-    disabled: !!isLoading || !input.trim() || sessionStatus !== 'active'
-  });
-
-  // Log data field for debugging (should be empty with our custom fetch approach)
-  useEffect(() => {
-    if (data) {
-      console.log('[AI SDK v5] Unexpected data field:', data);
-    }
-  }, [data]);
 
   const handleStopSession = async () => {
     if (!confirm('Are you sure you want to stop this session? This will terminate the agent container.')) {
@@ -583,7 +442,7 @@ export function ChatInterface({ sessionId, apiKey, onBack }: ChatInterfaceProps)
             />
           ) : (
             <Timeline
-              messages={handleSubmit ? messages || [] : (() => {
+              messages={(() => {
                 // Merge user messages from manualMessages with assistant segments from messageSegments
                 if (messageSegments.length > 0) {
                   // Get all user messages
@@ -599,8 +458,8 @@ export function ChatInterface({ sessionId, apiKey, onBack }: ChatInterfaceProps)
               })()}
               thinkingEvents={thinkingEvents}
               toolEvents={toolEvents}
-              isLoading={handleSubmit ? isLoading : manualLoading}
-              error={error}
+              isLoading={manualLoading}
+              error={null}
             />
           )}
         </div>
@@ -679,34 +538,14 @@ export function ChatInterface({ sessionId, apiKey, onBack }: ChatInterfaceProps)
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              console.log('[Form onSubmit] Triggered');
-              console.log('[Form onSubmit] handleSubmit available:', !!handleSubmit);
-              console.log('[Form onSubmit] Current input value:', handleInputChange ? input : manualInput);
-
-              if (handleSubmit) {
-                handleSubmit(e);
-              } else {
-                console.warn('[Form onSubmit] handleSubmit not available, using manual submit');
-                handleManualSubmit(manualInput);
-              }
+              handleManualSubmit(manualInput);
             }}
             className="flex gap-2">
             <input
-              value={handleInputChange ? input : manualInput}
-              onChange={(e) => {
-                console.log('[Input onChange] Event fired, new value:', e.target.value);
-                console.log('[Input onChange] handleInputChange type:', typeof handleInputChange);
-                console.log('[Input onChange] handleInputChange defined:', !!handleInputChange);
-
-                if (handleInputChange) {
-                  handleInputChange(e);
-                } else {
-                  console.warn('[Input onChange] handleInputChange not available, using manual state');
-                  setManualInput(e.target.value);
-                }
-              }}
+              value={manualInput}
+              onChange={(e) => setManualInput(e.target.value)}
               placeholder={sessionStatus === 'active' ? "Type your message or /command..." : "Session unavailable"}
-              disabled={(handleSubmit ? !!isLoading : manualLoading) || sessionStatus !== 'active'}
+              disabled={manualLoading || sessionStatus !== 'active'}
               className="flex-1 px-4 py-2.5 rounded-2xl bg-gray-900/50 border border-gray-800/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-gray-500/50 focus:border-gray-500/50 disabled:opacity-50 transition-all text-sm placeholder:text-gray-500"
               autoFocus
             />
@@ -719,7 +558,7 @@ export function ChatInterface({ sessionId, apiKey, onBack }: ChatInterfaceProps)
             >
               <Paperclip className="w-4 h-4" />
             </button>
-            {(handleSubmit ? isLoading : manualLoading) && (
+            {manualLoading && (
               <button
                 type="button"
                 onClick={handleInterrupt}
@@ -737,24 +576,10 @@ export function ChatInterface({ sessionId, apiKey, onBack }: ChatInterfaceProps)
             )}
             <button
               type="submit"
-              disabled={(handleSubmit ? !!isLoading : manualLoading) || !(handleInputChange ? input : manualInput).trim() || sessionStatus !== 'active'}
+              disabled={manualLoading || !manualInput.trim() || sessionStatus !== 'active'}
               className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 text-xs font-medium shadow-lg shadow-gray-900/20"
-              onMouseDown={() => {
-                console.log('[Send Button] Mouse down - FIRED');
-              }}
-              onClick={(e) => {
-                console.log('[Send Button] Clicked! Event:', e.type);
-                console.log('[Send Button] Debug:', {
-                  isLoading,
-                  hasInput: !!input,
-                  inputValue: JSON.stringify(input),
-                  inputTrimmed: input.trim(),
-                  sessionStatus,
-                  disabled: !!isLoading || !input.trim() || sessionStatus !== 'active'
-                });
-              }}
             >
-              {(handleSubmit ? isLoading : manualLoading) ? (
+              {manualLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Send className="w-4 h-4" />

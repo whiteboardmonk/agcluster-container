@@ -2,9 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import highlight.js theme */
-@import 'highlight.js/styles/github-dark.css';
-
 * {
   margin: 0;
   padding: 0;

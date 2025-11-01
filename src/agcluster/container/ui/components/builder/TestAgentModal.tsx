@@ -30,6 +30,7 @@ export function TestAgentModal({ config, onClose }: TestAgentModalProps) {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
@@ -87,8 +88,9 @@ export function TestAgentModal({ config, onClose }: TestAgentModalProps) {
       }
 
       setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }]);
-    } catch (error) {
-      console.error('Chat error:', error);
+    } catch (err) {
+      console.error('Chat error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to send message'));
     } finally {
       setIsLoading(false);
     }

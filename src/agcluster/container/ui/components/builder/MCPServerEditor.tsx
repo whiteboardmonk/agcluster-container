@@ -183,10 +183,10 @@ export function MCPServerEditor({ servers, onChange }: MCPServerEditorProps) {
                   <div>
                     <label className="block text-sm font-medium mb-2">Environment Variables</label>
                     <p className="text-xs text-gray-500 mb-2">
-                      Use placeholders like ${`${GITHUB_TOKEN}`} for runtime credentials
+                      Use placeholders like {'${GITHUB_TOKEN}'} for runtime credentials
                     </p>
                     <textarea
-                      value={server.env ? Object.entries(server.env).map(([k, v]) => `${k}=${v}`).join('\n') : ''}
+                      value={(server.type !== 'sse' && server.type !== 'http' && server.env) ? Object.entries(server.env).map(([k, v]) => `${k}=${v}`).join('\n') : ''}
                       onChange={(e) => {
                         const env: Record<string, string> = {};
                         e.target.value.split('\n').forEach(line => {
@@ -195,7 +195,10 @@ export function MCPServerEditor({ servers, onChange }: MCPServerEditorProps) {
                             env[k.trim()] = vParts.join('=').trim();
                           }
                         });
-                        handleUpdateServer(key, { ...server, env: Object.keys(env).length > 0 ? env : undefined });
+                        // Only update env for stdio servers (type undefined or 'stdio')
+                        if (server.type !== 'sse' && server.type !== 'http') {
+                          handleUpdateServer(key, { ...server, env: Object.keys(env).length > 0 ? env : undefined } as McpServerConfig);
+                        }
                       }}
                       rows={3}
                       className="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded focus:ring-2 focus:ring-green-500 text-sm font-mono"

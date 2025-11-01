@@ -24,23 +24,35 @@ body {
 
 @layer utilities {
   .glass {
-    @apply bg-zinc-900/50 border border-gray-800;
+    background-color: rgb(24 24 27 / 0.5);
+    border-width: 1px;
+    border-color: rgb(31 41 55);
   }
 
   .glass-hover {
-    @apply hover:bg-zinc-900/70 hover:border-gray-700 transition-all duration-300;
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+
+  .glass-hover:hover {
+    background-color: rgb(24 24 27 / 0.7);
+    border-color: rgb(55 65 81);
   }
 
   .gradient-text {
-    @apply text-white;
+    color: rgb(255 255 255);
   }
 
   .glass-effect {
-    @apply bg-zinc-900/50 border border-gray-800;
+    background-color: rgb(24 24 27 / 0.5);
+    border-width: 1px;
+    border-color: rgb(31 41 55);
   }
 
   .glow-card {
-    @apply relative overflow-hidden;
+    position: relative;
+    overflow: hidden;
   }
 
   .glow-card::before {
@@ -59,5 +71,8 @@ body {
 
 /* Syntax highlighting for code blocks */
 .hljs {
-  @apply bg-gray-900 rounded-lg p-4 overflow-x-auto;
+  background-color: rgb(17 24 39);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
 }

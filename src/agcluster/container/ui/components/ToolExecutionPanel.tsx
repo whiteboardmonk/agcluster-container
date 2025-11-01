@@ -149,14 +149,14 @@ export function ToolExecutionPanel({ toolEvents, isConnected }: ToolExecutionPan
               {/* Expanded Details */}
               {isExpanded && (
                 <div className="px-3 pb-3 space-y-2">
-                  {event.tool_input !== undefined && (
+                  {event.tool_input !== undefined && event.tool_input !== null && (
                     <div>
                       <p className="text-xs text-gray-400 mb-1">Input:</p>
                       <div className="text-xs glass p-2 rounded overflow-x-auto">
                         {/* Special formatting for TodoWrite */}
-                        {event.tool_name === 'TodoWrite' && typeof event.tool_input === 'object' && 'todos' in event.tool_input ? (
+                        {event.tool_name === 'TodoWrite' && typeof event.tool_input === 'object' && event.tool_input && 'todos' in event.tool_input && Array.isArray((event.tool_input as any).todos) ? (
                           <div className="space-y-1">
-                            {event.tool_input.todos?.map((todo: any, idx: number) => (
+                            {(event.tool_input as any).todos.map((todo: any, idx: number) => (
                               <div key={idx} className="flex items-start gap-2">
                                 <span className="text-gray-500">{idx + 1}.</span>
                                 <span className="text-gray-300">{todo.content || todo}</span>

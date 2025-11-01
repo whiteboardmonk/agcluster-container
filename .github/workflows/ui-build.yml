@@ -1,0 +1,83 @@
+name: UI Build & Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/agcluster/container/ui/**'
+      - '.github/workflows/ui-build.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'src/agcluster/container/ui/**'
+      - '.github/workflows/ui-build.yml'
+
+jobs:
+  ui-build:
+    name: Build UI Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build UI Docker image
+        run: |
+          docker build -t agcluster-ui:test -f src/agcluster/container/ui/Dockerfile src/agcluster/container/ui
+
+      - name: Verify build artifacts
+        run: |
+          docker run --rm agcluster-ui:test ls -la .next/
+
+  ui-typecheck:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/agcluster/container/ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/agcluster/container/ui
+        run: npm ci
+
+      - name: Run TypeScript type check
+        working-directory: src/agcluster/container/ui
+        run: npx tsc --noEmit
+
+      - name: Run ESLint
+        working-directory: src/agcluster/container/ui
+        run: npm run lint
+
+  ui-unit-tests:
+    name: UI Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/agcluster/container/ui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/agcluster/container/ui
+        run: npm ci
+
+      - name: Run Vitest unit tests
+        working-directory: src/agcluster/container/ui
+        run: npm test

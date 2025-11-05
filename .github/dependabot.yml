@@ -38,3 +38,13 @@ updates:
       - "dependencies"
       - "ui"
       - "npm"
+    ignore:
+      # Block TailwindCSS v4 - requires manual migration with breaking changes
+      # Project already attempted upgrade and rolled back (see commit e67e97a)
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      # Block Next.js major updates - require extensive testing and migration
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint-config-next"
+        update-types: ["version-update:semver-major"]

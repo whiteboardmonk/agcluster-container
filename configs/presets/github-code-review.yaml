@@ -35,7 +35,8 @@ allowed_tools:
   - TodoWrite
   # MCP tools are auto-allowed when mcp_servers is configured
 
-permission_mode: acceptEdits
+# Claude SDK permissions: bypass prompts for tool use to avoid repeated approval
+permission_mode: bypassPermissions
 
 resource_limits:
   cpu_quota: 100000      # 1 CPU
@@ -49,4 +50,4 @@ mcp_servers:
     command: npx
     args: ["-y", "@modelcontextprotocol/server-github"]
     env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}  # Overridden by mcp_env at launch time
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}  # Overridden by mcp_env at launch time

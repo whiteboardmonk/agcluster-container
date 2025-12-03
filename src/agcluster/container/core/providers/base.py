@@ -47,6 +47,7 @@ class ProviderConfig:
         platform_credentials: Platform-specific authentication credentials
         mcp_servers: MCP server configurations (optional)
         mcp_env: Runtime environment variables for MCP servers (optional)
+        permission_mode: Claude SDK permission mode (default, acceptEdits, plan, bypassPermissions)
     """
 
     platform: str
@@ -60,6 +61,7 @@ class ProviderConfig:
     platform_credentials: Dict[str, Any] = field(default_factory=dict)
     mcp_servers: Optional[Dict[str, Any]] = None
     mcp_env: Optional[Dict[str, Dict[str, str]]] = None
+    permission_mode: str = "acceptEdits"
 
 
 class ContainerProvider(ABC):

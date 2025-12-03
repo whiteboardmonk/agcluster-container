@@ -12,6 +12,15 @@ from agcluster.container.models.agent_config import AgentConfig
 logger = logging.getLogger(__name__)
 
 
+RESERVED_ENV_VARS = {
+    "ANTHROPIC_API_KEY",
+    "AGENT_CONFIG_JSON",
+    "AGENT_ID",
+    "SESSION_ID",
+    "CONVERSATION_ID",
+}
+
+
 class AgentContainer:
     """
     Wrapper around ContainerInfo for backward compatibility.
@@ -125,6 +134,47 @@ class ContainerManager:
 
         logger.info(f"ContainerManager initialized with {self.provider.__class__.__name__}")
 
+    def _sanitize_mcp_env(
+        self, config: AgentConfig, mcp_env: Optional[Dict[str, Dict[str, str]]]
+    ) -> Optional[Dict[str, Dict[str, str]]]:
+        """
+        Validate and sanitize MCP environment variables supplied at launch.
+
+        Only allow variables explicitly declared in each server's config.env and
+        block overrides of core container variables. Returns a filtered copy.
+        """
+        if not mcp_env:
+            return None
+
+        if not config.mcp_servers:
+            raise ValueError("mcp_env provided but no mcp_servers configured")
+
+        sanitized: Dict[str, Dict[str, str]] = {}
+
+        for server_name, server_env in mcp_env.items():
+            if server_name not in config.mcp_servers:
+                raise ValueError(f"Unknown MCP server '{server_name}' in mcp_env")
+
+            declared_env = getattr(config.mcp_servers[server_name], "env", {}) or {}
+            allowed_keys = set(declared_env.keys())
+
+            if not allowed_keys and server_env:
+                raise ValueError(
+                    f"MCP server '{server_name}' does not declare env keys; cannot accept runtime credentials"
+                )
+
+            sanitized[server_name] = {}
+            for key, value in server_env.items():
+                if key in RESERVED_ENV_VARS:
+                    raise ValueError(f"MCP env key '{key}' is reserved and cannot be overridden")
+                if key not in allowed_keys:
+                    raise ValueError(
+                        f"MCP env key '{key}' not declared in config for server '{server_name}'"
+                    )
+                sanitized[server_name][key] = value
+
+        return sanitized
+
     async def create_agent_container_from_config(
         self,
         api_key: str,
@@ -147,6 +197,9 @@ class ContainerManager:
         session_id = f"session-{uuid.uuid4().hex[:12]}"
 
         logger.info(f"Creating container for session {session_id} with config {config_id}")
+
+        # Validate and sanitize runtime MCP environment variables
+        sanitized_mcp_env = self._sanitize_mcp_env(config, mcp_env)
 
         # Build provider config
         provider_config = ProviderConfig(
@@ -172,7 +225,8 @@ class ContainerManager:
             api_key=api_key,
             platform_credentials={},  # TODO: Add platform-specific creds when needed
             mcp_servers=config.mcp_servers,  # Pass MCP servers from config
-            mcp_env=mcp_env,  # Pass runtime MCP environment variables
+            mcp_env=sanitized_mcp_env,  # Pass runtime MCP environment variables
+            permission_mode=config.permission_mode or "acceptEdits",
         )
 
         # Create container via provider
@@ -223,6 +277,7 @@ class ContainerManager:
             max_turns=100,  # Default
             api_key=api_key,
             platform_credentials={},
+            permission_mode="acceptEdits",
         )
 
         # Create container via provider

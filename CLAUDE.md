@@ -165,7 +165,7 @@ docker compose down
 
 ### Testing
 
-**Test Suite**: 133 tests, 100% passing, 83% coverage
+**Test Suite**: Run `pytest tests/` (unit, integration, e2e markers); target 80%+ coverage locally
 
 ```bash
 # Run all tests
@@ -351,11 +351,12 @@ SESSION_IDLE_TIMEOUT=1800         # 30 minutes idle timeout
 ### Agent Configuration Files
 
 Agent presets are stored in `configs/presets/` as YAML files. See "Agent Configuration System" section above for structure and details. The system includes:
-- ✅ 4 preset configurations (code-assistant, research-agent, data-analysis, fullstack-team)
+- ✅ 5 preset configurations (code-assistant, research-agent, data-analysis, github-code-review, fullstack-team)
 - ✅ Custom inline config support via `/api/agents/launch`
 - ✅ Full validation via Pydantic models
 - ✅ Multi-agent orchestration (sub-agents)
-- ✅ Per-agent tool specialization and resource limits
+- ✅ Per-agent tool specialization and resource limits (with MCP servers where configured)
+- ✅ Launch-time MCP credentials (`mcp_env`) must match keys declared under each server's `env`; reserved container env vars are blocked from override
 
 Documentation: `configs/README.md`
 
@@ -484,18 +485,18 @@ curl -X POST "http://localhost:8000/api/files/conv-abc123.../upload?overwrite=fa
 - ✅ FastAPI endpoints (`/`, `/health`, `/api/agents/*`, `/api/configs`, `/api/files`)
 - ✅ Claude-native chat API (`/api/agents/{session_id}/chat`)
 - ✅ Agent configuration endpoints (`/api/configs`, `/api/agents/launch`, `/api/agents/sessions`)
-- ✅ 4 preset agent configurations (code-assistant, research-agent, data-analysis, fullstack-team)
-- ✅ Custom inline configuration support
+- ✅ 5 preset agent configurations (adds `github-code-review` with MCP)
+- ✅ Custom inline config support
 - ✅ Multi-agent orchestration (fullstack-team with 3 sub-agents)
 - ✅ Config-based session management with persistent containers
 - ✅ Background cleanup task (30-minute idle timeout)
 - ✅ Claude SDK integration with configurable tools (Bash, Read, Write, Grep, Task, WebFetch, NotebookEdit, TodoWrite)
 - ✅ TodoWrite tool for all presets (task tracking)
 - ✅ NotebookEdit tool for data-analysis (Jupyter support)
+- ✅ MCP server support with launch-time credentials and auto-allowed MCP tools
 - ✅ Docker container isolation per conversation/session
 - ✅ Per-agent resource limits (CPU, memory, storage)
 - ✅ Namespace package structure for modularity
-- ✅ Comprehensive test suite (218 tests, 212 passing, 66% coverage)
 - ✅ Web UI with Next.js 15 + React + TypeScript
 - ✅ File operations API with security (browse, preview, download, **upload**)
 - ✅ File upload with multi-provider support (Docker + Fly.io)
@@ -514,7 +515,7 @@ curl -X POST "http://localhost:8000/api/files/conv-abc123.../upload?overwrite=fa
 **Tested and Verified**:
 - ✅ Multi-turn conversations with context preservation
 - ✅ Config-based agent launching and session management
-- ✅ All 4 preset configurations load and validate successfully
+- ✅ All presets load and validate successfully (including MCP-enabled configs)
 - ✅ Inline custom configuration support
 - ✅ Tool specialization per agent type
 - ✅ Resource limits enforcement

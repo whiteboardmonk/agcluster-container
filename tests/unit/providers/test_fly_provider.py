@@ -26,6 +26,7 @@ def provider_config():
         max_turns=100,
         api_key="sk-ant-test-key",
         platform_credentials={"fly_region": "iad"},
+        permission_mode="acceptEdits",
     )
 
 
@@ -190,6 +191,7 @@ class TestCreateContainer:
         assert config_json["allowed_tools"] == ["Bash", "Read", "Write", "Grep"]
         assert config_json["system_prompt"] == "You are a helpful AI assistant."
         assert config_json["max_turns"] == 100
+        assert config_json["permission_mode"] == "acceptEdits"
 
     @pytest.mark.asyncio
     async def test_create_machine_custom_region(self, fly_provider):
@@ -204,6 +206,7 @@ class TestCreateContainer:
             max_turns=50,
             api_key="test-key",
             platform_credentials={"fly_region": "sjc"},
+            permission_mode="acceptEdits",
         )
 
         mock_response = Mock()
@@ -248,6 +251,7 @@ class TestCreateContainer:
             max_turns=100,
             api_key="test-key",
             platform_credentials={},
+            permission_mode="acceptEdits",
         )
 
         mock_response = Mock()
@@ -298,6 +302,7 @@ class TestCreateContainer:
                 max_turns=100,
                 api_key="test-key",
                 platform_credentials={},
+                permission_mode="acceptEdits",
             )
 
             mock_response = Mock()

@@ -68,7 +68,7 @@
   - `github-code-review` - GitHub PR reviews with MCP integration
   - `fullstack-team` - Multi-agent orchestration with sub-agents
 - **Custom Configurations** - Define agents with specific tools and limits
-- **MCP Server Support** - Integrate external tools via Model Context Protocol
+- **MCP Server Support** - Integrate external tools via Model Context Protocol (GitHub, filesystem, Postgres, etc.)
 - **Tool Specialization** - Configure which tools each agent can access
 - **Resource Management** - Per-agent CPU, memory, storage limits
 
@@ -213,8 +213,9 @@ Statistical analysis and data visualization
 
 GitHub PR review agent with MCP integration
 
-- **Tools**: Read, Write, Grep, TodoWrite
+- **Tools**: Read, Write, Grep, TodoWrite (+ auto-added MCP tools)
 - **MCP Servers**: GitHub MCP server for PR/issue operations
+- **Permissions**: `permission_mode: bypassPermissions` to avoid repeated approval prompts for MCP calls
 - **Resources**: 1 CPU, 2GB RAM, 5GB storage
 - **Use Cases**: Automated PR reviews, security scanning, code quality checks
 
@@ -428,6 +429,8 @@ Launch a new agent from configuration.
   }
 }
 ```
+
+**MCP credential rules and permissions:** keys in `mcp_env` must match those declared under each server’s `env` in the config (e.g., `GITHUB_PERSONAL_ACCESS_TOKEN`). Core container env vars (such as `ANTHROPIC_API_KEY`, `AGENT_CONFIG_JSON`, `AGENT_ID`) cannot be overridden. When `mcp_servers` are present, agents auto-enable `ListMcpResources`, `ReadMcpResource`, and `mcp__{server}__*` tool permissions, and use Claude SDK permission mode `acceptEdits` by default. If you require stricter gating, set `permission_mode: plan` or `default` in the config.
 
 **Response:**
 ```json

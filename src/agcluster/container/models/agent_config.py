@@ -169,8 +169,9 @@ class AgentConfig(BaseModel):
         Automatically allow MCP tools from configured servers.
 
         If mcp_servers are configured, automatically grants permission to use
-        ListMcpResources and ReadMcpResource tools. This eliminates the need
-        to explicitly list these tools in allowed_tools.
+        ListMcpResources and ReadMcpResource tools plus server-specific MCP
+        tool namespaces. This eliminates the need to explicitly list these
+        tools in allowed_tools.
         """
         if self.mcp_servers:
             # Add base MCP tools if not already present
@@ -178,6 +179,12 @@ class AgentConfig(BaseModel):
             for tool in base_mcp_tools:
                 if tool not in self.allowed_tools:
                     self.allowed_tools.append(tool)
+
+            # Allow server-specific MCP tools (prefix-based)
+            for server_name in self.mcp_servers.keys():
+                wildcard_tool = f"mcp__{server_name}__*"
+                if wildcard_tool not in self.allowed_tools:
+                    self.allowed_tools.append(wildcard_tool)
 
             # Log which servers are configured (helps with debugging)
             import logging

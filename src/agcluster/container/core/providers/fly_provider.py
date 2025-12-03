@@ -90,7 +90,7 @@ class FlyProvider(ContainerProvider):
             "name": f"Agent {agent_id}",
             "allowed_tools": config.allowed_tools,
             "system_prompt": config.system_prompt,
-            "permission_mode": "acceptEdits",
+            "permission_mode": getattr(config, "permission_mode", None) or "acceptEdits",
             "max_turns": config.max_turns,
         }
 

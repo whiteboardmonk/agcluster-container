@@ -13,7 +13,7 @@ export interface AgentConfig {
   version?: string;
   system_prompt?: string;
   allowed_tools?: string[];
-  permission_mode?: 'acceptEdits' | 'confirm';
+  permission_mode?: 'default' | 'acceptEdits' | 'plan' | 'bypassPermissions';
   resource_limits?: {
     cpu_quota?: number;
     memory_limit?: string;

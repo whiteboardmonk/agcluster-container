@@ -77,7 +77,7 @@ class DockerProvider(ContainerProvider):
                 "name": f"Agent {agent_id}",
                 "allowed_tools": config.allowed_tools,
                 "system_prompt": system_prompt_value,
-                "permission_mode": "acceptEdits",
+                "permission_mode": getattr(config, "permission_mode", None) or "acceptEdits",
                 "max_turns": config.max_turns,
             }
 

@@ -223,7 +223,7 @@ mcp_servers:
     command: npx                                   # Executable
     args: ["-y", "@modelcontextprotocol/server-github"]  # Arguments
     env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}  # Placeholder
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}  # Placeholder
 ```
 
 **Runtime Credentials:**
@@ -249,6 +249,10 @@ curl -X POST http://localhost:8000/api/agents/launch \
 - **Environment Variable Merging**: Runtime `mcp_env` overrides config-defined placeholders
 - **Multi-Provider Support**: MCP works with Docker, Fly.io, and other providers
 - **Tool Discovery**: Agents can list and read available MCP resources
+- **Runtime Credential Validation**: `mcp_env` keys must match the `env` keys defined per server; core container env vars cannot be overridden
+
+**Preset MCP Example:**
+- `github-code-review.yaml` — GitHub PR reviews using the GitHub MCP server with launch-time personal access token
 
 **Available MCP Servers:**
 - `@modelcontextprotocol/server-github` - GitHub API integration
@@ -305,7 +309,7 @@ mcp_servers:
     command: npx
     args: ["-y", "@modelcontextprotocol/server-github"]
     env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}  # Placeholder
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_PERSONAL_ACCESS_TOKEN}  # Placeholder
 ```
 
 Launch with actual credentials:

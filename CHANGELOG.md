@@ -5,30 +5,19 @@ All notable changes to the AgCluster Container project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.2] - 2025-12-03
 
 ### Added
-- **MCP Server Support**: Model Context Protocol integration for external tools
-  - GitHub MCP server preset (`github-code-review` configuration)
-  - Auto-enable MCP tools (ListMcpResources, ReadMcpResource) when servers configured
-  - Runtime credential injection via `mcp_env` parameter in launch requests
-  - Environment variable merging in providers (Docker, Fly.io)
-  - `mcp_env` field in LaunchRequest API model
-- **GitHub Code Review Agent**: Specialized preset for automated PR reviews
-  - System prompt optimized for code quality, security, performance analysis
-  - MCP-based GitHub API integration for fetching PR details
-  - Resource limits: 1 CPU, 2GB RAM, 5GB storage
+- GitHub Code Review preset now exposes MCP permissions in the UI builder (including permission modes, tool selection, and MCP server envs).
+
+### Changed
+- Respect `permission_mode` end-to-end (including container env) so MCP-enabled agents honor preset settings such as `bypassPermissions`.
+- Clarified MCP credential expectations for GitHub by standardizing on `GITHUB_PERSONAL_ACCESS_TOKEN` in configs and docs.
+- Docker/Fly providers and API client updated to carry full permission modes and MCP settings.
 
 ### Fixed
-- Critical bug: MCP servers defined in configs were never passed to containers
-- MCP servers now properly included in AGENT_CONFIG_JSON environment variable
-- Environment variable resolution for MCP server configurations
-
-### Improved
-- Provider abstraction layer now supports MCP server configs and credentials
-- Configuration loading system passes MCP configs through full stack
-- Session manager forwards MCP credentials to container manager
-- Documentation updated with MCP usage examples and launch-time credentials
+- Prevented stale configs in containers by mounting repository presets in Docker Compose.
+- Resolved MCP auth/approval loops for GitHub by propagating permissions correctly and passing PATs unchanged.
 
 ---
 

@@ -27,6 +27,7 @@ def provider_config():
         max_turns=100,
         api_key="sk-ant-test-key",
         platform_credentials={},
+        permission_mode="acceptEdits",
     )
 
 
@@ -180,6 +181,7 @@ class TestCreateContainer:
         assert config_json["allowed_tools"] == ["Bash", "Read", "Write", "Grep"]
         assert config_json["system_prompt"] == "You are a helpful AI assistant."
         assert config_json["max_turns"] == 100
+        assert config_json["permission_mode"] == "acceptEdits"
 
         # Check security
         assert call_args[1]["security_opt"] == ["no-new-privileges"]

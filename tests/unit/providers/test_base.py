@@ -71,6 +71,7 @@ class TestProviderConfig:
             max_turns=50,
             api_key="test-key",
             platform_credentials={},
+            permission_mode="acceptEdits",
         )
 
         assert config.platform == "docker"
@@ -91,6 +92,7 @@ class TestProviderConfig:
             max_turns=100,
             api_key="sk-ant-test",
             platform_credentials={"fly_api_token": "fly_token_123", "fly_app_name": "my-app"},
+            permission_mode="plan",
         )
 
         assert config.platform == "fly_machines"
@@ -108,6 +110,7 @@ class TestProviderConfig:
             max_turns=100,
             api_key="test",
             platform_credentials={},
+            permission_mode="acceptEdits",
         )
 
         assert config.cpu_quota == 400000

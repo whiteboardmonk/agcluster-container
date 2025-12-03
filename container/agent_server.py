@@ -85,7 +85,9 @@ class AgentServer:
         self.config = {
             "id": "legacy",
             "name": "Legacy Agent",
-            "allowed_tools": os.environ.get("ALLOWED_TOOLS", "Bash,Read,Write").split(","),
+            "allowed_tools": os.environ.get(
+                "ALLOWED_TOOLS", "Bash,Read,Write,ListMcpResources,ReadMcpResource"
+            ).split(","),
             "system_prompt": os.environ.get("SYSTEM_PROMPT", "You are a helpful AI assistant."),
             "permission_mode": "acceptEdits",
         }

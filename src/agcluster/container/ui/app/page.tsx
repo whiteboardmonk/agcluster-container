@@ -3,14 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Code2, Search, BarChart3, Rocket, Plus } from 'lucide-react';
-import { listConfigs, launchAgent, type ConfigInfo } from '@/lib/api-client';
+import { listConfigs, launchAgent, getConfig, type ConfigInfo, type AgentConfig } from '@/lib/api-client';
 import Navigation from '@/components/Navigation';
+import { McpCredentialsModal } from '@/components/McpCredentialsModal';
 
 const PRESET_ICONS = {
   'code-assistant': Code2,
   'research-agent': Search,
   'data-analysis': BarChart3,
   'fullstack-team': Rocket,
+  'github-code-review': Code2,
 } as const;
 
 export default function DashboardPage() {
@@ -20,6 +22,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [backendConnected, setBackendConnected] = useState(false);
+  const [mcpModalOpen, setMcpModalOpen] = useState(false);
+  const [selectedConfig, setSelectedConfig] = useState<{ id: string; fullConfig: AgentConfig | null }>({ id: '', fullConfig: null });
 
   // Load API key from localStorage
   useEffect(() => {
@@ -49,6 +53,26 @@ export default function DashboardPage() {
       return;
     }
 
+    setError('');
+
+    // Check if config has MCP servers
+    const configInfo = configs.find(c => c.id === configId);
+    if (configInfo?.has_mcp_servers) {
+      // Fetch full config to get MCP server details
+      try {
+        const fullConfig = await getConfig(configId);
+        setSelectedConfig({ id: configId, fullConfig });
+        setMcpModalOpen(true);
+      } catch (err) {
+        setError('Failed to load config details');
+      }
+    } else {
+      // Launch directly without MCP credentials
+      await doLaunchAgent(configId, {});
+    }
+  };
+
+  const doLaunchAgent = async (configId: string, mcpEnv: Record<string, Record<string, string>>) => {
     setLoading(true);
     setError('');
 
@@ -60,6 +84,7 @@ export default function DashboardPage() {
       const response = await launchAgent({
         api_key: apiKey,
         config_id: configId,
+        mcp_env: Object.keys(mcpEnv).length > 0 ? mcpEnv : undefined,
       });
 
       // Navigate to chat with session ID
@@ -69,6 +94,11 @@ export default function DashboardPage() {
       setError(message);
       setLoading(false);
     }
+  };
+
+  const handleMcpCredentialsSubmit = async (credentials: Record<string, Record<string, string>>) => {
+    setMcpModalOpen(false);
+    await doLaunchAgent(selectedConfig.id, credentials);
   };
 
   return (
@@ -206,6 +236,14 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {/* MCP Credentials Modal */}
+      <McpCredentialsModal
+        isOpen={mcpModalOpen}
+        onClose={() => setMcpModalOpen(false)}
+        mcpServers={selectedConfig.fullConfig?.mcp_servers || {}}
+        onSubmit={handleMcpCredentialsSubmit}
+      />
     </div>
   );
 }

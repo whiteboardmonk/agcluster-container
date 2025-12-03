@@ -10,6 +10,7 @@ from agcluster.container.core.container_manager import (
     AgentContainer,
 )
 from agcluster.container.core.providers import ContainerInfo
+from agcluster.container.models.agent_config import AgentConfig, McpStdioServerConfig
 
 
 @pytest.mark.unit
@@ -376,3 +377,44 @@ class TestContainerLookup:
 
             containers = manager.list_containers()
             assert containers == []
+
+
+@pytest.mark.unit
+class TestMcpEnvValidation:
+    """Validate runtime MCP credentials are constrained to declared env keys."""
+
+    def setup_method(self):
+        self.config = AgentConfig(
+            id="github-code-review",
+            name="GitHub Code Review Agent",
+            allowed_tools=["Read"],
+            mcp_servers={
+                "github": McpStdioServerConfig(
+                    command="npx",
+                    args=["-y", "@modelcontextprotocol/server-github"],
+                    env={"GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"},
+                )
+            },
+        )
+        with patch("agcluster.container.core.container_manager.ProviderFactory.create_provider"):
+            self.manager = ContainerManager(provider_name="docker")
+
+    def test_accepts_declared_env_keys(self):
+        sanitized = self.manager._sanitize_mcp_env(
+            self.config, {"github": {"GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_123"}}
+        )
+        assert sanitized == {"github": {"GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_123"}}
+
+    def test_rejects_unknown_server(self):
+        with pytest.raises(ValueError):
+            self.manager._sanitize_mcp_env(
+                self.config, {"unknown": {"GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_123"}}
+            )
+
+    def test_rejects_undeclared_env_key(self):
+        with pytest.raises(ValueError):
+            self.manager._sanitize_mcp_env(self.config, {"github": {"OTHER": "x"}})
+
+    def test_rejects_reserved_env_override(self):
+        with pytest.raises(ValueError):
+            self.manager._sanitize_mcp_env(self.config, {"github": {"ANTHROPIC_API_KEY": "x"}})

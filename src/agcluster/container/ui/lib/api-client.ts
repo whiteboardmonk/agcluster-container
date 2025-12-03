@@ -13,7 +13,7 @@ export interface AgentConfig {
   version?: string;
   system_prompt?: string;
   allowed_tools?: string[];
-  permission_mode?: 'acceptEdits' | 'confirm';
+  permission_mode?: 'default' | 'acceptEdits' | 'plan' | 'bypassPermissions';
   resource_limits?: {
     cpu_quota?: number;
     memory_limit?: string;
@@ -38,6 +38,7 @@ export interface LaunchAgentRequest {
   api_key: string;
   config_id?: string;
   config?: AgentConfig;
+  mcp_env?: Record<string, Record<string, string>>;
 }
 
 export interface LaunchAgentResponse {

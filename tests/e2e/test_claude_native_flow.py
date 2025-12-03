@@ -8,6 +8,7 @@ Tests the complete flow:
 4. Test tool execution, thinking, and todo events
 """
 
+import os
 import pytest
 import httpx
 import json
@@ -16,7 +17,7 @@ from typing import AsyncIterator
 
 # API Configuration
 API_BASE_URL = "http://localhost:8000"
-ANTHROPIC_API_KEY = None  # Set via environment variable or pytest parameter
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "test-api-key")
 
 
 @pytest.fixture(scope="module")
@@ -191,6 +192,8 @@ async def test_simple_chat_message(api_key, test_session):
 @pytest.mark.e2e
 async def test_tool_execution_events(api_key, test_session):
     """Test that tool execution events are streamed correctly"""
+    if api_key == "test-api-key":
+        pytest.skip("Tool execution requires a real Anthropic API key to trigger tool calls")
     session_id = test_session
 
     async with httpx.AsyncClient(timeout=180.0) as client:

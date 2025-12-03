@@ -13,6 +13,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       # Mount source code for development
       - ./src:/app/src
+      # Mount configs so presets stay in sync with local changes
+      - ./configs:/app/configs:ro
     environment:
       - API_HOST=0.0.0.0
       - API_PORT=8000

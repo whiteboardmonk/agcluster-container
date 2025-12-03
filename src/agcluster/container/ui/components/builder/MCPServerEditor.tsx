@@ -71,7 +71,7 @@ export function MCPServerEditor({ servers, onChange }: MCPServerEditorProps) {
         <button
           type="button"
           onClick={handleAddServer}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded transition-colors text-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors text-sm"
         >
           <Plus className="w-4 h-4" />
           Add MCP Server
@@ -178,6 +178,33 @@ export function MCPServerEditor({ servers, onChange }: MCPServerEditorProps) {
                       />
                     </div>
                   )}
+
+                  {/* Environment Variables */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Environment Variables</label>
+                    <p className="text-xs text-gray-500 mb-2">
+                      Use placeholders like {'${GITHUB_TOKEN}'} for runtime credentials
+                    </p>
+                    <textarea
+                      value={(server.type !== 'sse' && server.type !== 'http' && server.env) ? Object.entries(server.env).map(([k, v]) => `${k}=${v}`).join('\n') : ''}
+                      onChange={(e) => {
+                        const env: Record<string, string> = {};
+                        e.target.value.split('\n').forEach(line => {
+                          const [k, ...vParts] = line.split('=');
+                          if (k && vParts.length > 0) {
+                            env[k.trim()] = vParts.join('=').trim();
+                          }
+                        });
+                        // Only update env for stdio servers (type undefined or 'stdio')
+                        if (server.type !== 'sse' && server.type !== 'http') {
+                          handleUpdateServer(key, { ...server, env: Object.keys(env).length > 0 ? env : undefined } as McpServerConfig);
+                        }
+                      }}
+                      rows={3}
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded focus:ring-2 focus:ring-green-500 text-sm font-mono"
+                      placeholder="GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_TOKEN}&#10;API_KEY=${API_KEY}"
+                    />
+                  </div>
                 </div>
               )}
             </div>

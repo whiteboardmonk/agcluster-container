@@ -74,13 +74,14 @@ async def launch_agent(request: LaunchRequest):
         # Generate conversation ID (used as session key)
         conversation_id = str(uuid.uuid4())
 
-        # Create session from config with optional provider
+        # Create session from config with optional provider and MCP credentials
         session_id, agent_container = await session_manager.create_session_from_config(
             conversation_id=conversation_id,
             api_key=request.api_key,
             config_id=request.config_id,
             config=request.config,
             provider=request.provider,
+            mcp_env=request.mcp_env,
         )
 
         return LaunchResponse(

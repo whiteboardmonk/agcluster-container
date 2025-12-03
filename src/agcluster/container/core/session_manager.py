@@ -61,6 +61,7 @@ class SessionManager:
         config_id: Optional[str] = None,
         config: Optional[AgentConfig] = None,
         provider: Optional[str] = None,
+        mcp_env: Optional[Dict[str, Dict[str, str]]] = None,
     ) -> tuple[str, AgentContainer]:
         """
         Create a new session from configuration
@@ -71,6 +72,7 @@ class SessionManager:
             config_id: Optional config ID to load
             config: Optional inline config
             provider: Optional provider name (docker, fly_machines, cloudflare, vercel)
+            mcp_env: Optional runtime environment variables for MCP servers
 
         Returns:
             tuple: (session_id, AgentContainer)
@@ -109,13 +111,13 @@ class SessionManager:
             logger.info(f"Creating session {session_id} with provider {provider}")
             provider_manager = ContainerManager(provider_name=provider)
             agent_container = await provider_manager.create_agent_container_from_config(
-                api_key=api_key, config=config, config_id=effective_config_id
+                api_key=api_key, config=config, config_id=effective_config_id, mcp_env=mcp_env
             )
         else:
             # Use global container manager (default provider)
             logger.info(f"Creating session {session_id} with config {effective_config_id}")
             agent_container = await container_manager.create_agent_container_from_config(
-                api_key=api_key, config=config, config_id=effective_config_id
+                api_key=api_key, config=config, config_id=effective_config_id, mcp_env=mcp_env
             )
 
         # Store session

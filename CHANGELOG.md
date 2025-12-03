@@ -5,6 +5,22 @@ All notable changes to the AgCluster Container project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2025-12-03
+
+### Added
+- GitHub Code Review preset now exposes MCP permissions in the UI builder (including permission modes, tool selection, and MCP server envs).
+
+### Changed
+- Respect `permission_mode` end-to-end (including container env) so MCP-enabled agents honor preset settings such as `bypassPermissions`.
+- Clarified MCP credential expectations for GitHub by standardizing on `GITHUB_PERSONAL_ACCESS_TOKEN` in configs and docs.
+- Docker/Fly providers and API client updated to carry full permission modes and MCP settings.
+
+### Fixed
+- Prevented stale configs in containers by mounting repository presets in Docker Compose.
+- Resolved MCP auth/approval loops for GitHub by propagating permissions correctly and passing PATs unchanged.
+
+---
+
 ## [0.3.0] - 2025-01-28
 
 ### Added

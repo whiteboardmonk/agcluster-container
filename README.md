@@ -61,12 +61,14 @@
 
 ### Agent Configuration System
 
-- **Preset Configurations** - 4 ready-to-use templates:
+- **Preset Configurations** - 5 ready-to-use templates:
   - `code-assistant` - Full-stack development
   - `research-agent` - Web research and analysis
   - `data-analysis` - Statistical analysis with Jupyter
+  - `github-code-review` - GitHub PR reviews with MCP integration
   - `fullstack-team` - Multi-agent orchestration with sub-agents
 - **Custom Configurations** - Define agents with specific tools and limits
+- **MCP Server Support** - Integrate external tools via Model Context Protocol (GitHub, filesystem, Postgres, etc.)
 - **Tool Specialization** - Configure which tools each agent can access
 - **Resource Management** - Per-agent CPU, memory, storage limits
 
@@ -207,7 +209,32 @@ Statistical analysis and data visualization
 - **Resources**: 2 CPUs, 6GB RAM, 15GB storage
 - **Use Cases**: Exploratory data analysis, statistical testing, Jupyter workflows
 
-#### 4. Full-Stack Team (`fullstack-team`)
+#### 4. GitHub Code Review (`github-code-review`)
+
+GitHub PR review agent with MCP integration
+
+- **Tools**: Read, Write, Grep, TodoWrite (+ auto-added MCP tools)
+- **MCP Servers**: GitHub MCP server for PR/issue operations
+- **Permissions**: `permission_mode: bypassPermissions` to avoid repeated approval prompts for MCP calls
+- **Resources**: 1 CPU, 2GB RAM, 5GB storage
+- **Use Cases**: Automated PR reviews, security scanning, code quality checks
+
+**Launch with GitHub token:**
+```bash
+curl -X POST http://localhost:8000/api/agents/launch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "sk-ant-...",
+    "config_id": "github-code-review",
+    "mcp_env": {
+      "github": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+      }
+    }
+  }'
+```
+
+#### 5. Full-Stack Team (`fullstack-team`)
 
 Multi-agent orchestrator with specialized sub-agents
 
@@ -389,6 +416,21 @@ Launch a new agent from configuration.
   "config_id": "code-assistant"
 }
 ```
+
+**With MCP credentials:**
+```json
+{
+  "api_key": "sk-ant-...",
+  "config_id": "github-code-review",
+  "mcp_env": {
+    "github": {
+      "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_..."
+    }
+  }
+}
+```
+
+**MCP credential rules and permissions:** keys in `mcp_env` must match those declared under each server’s `env` in the config (e.g., `GITHUB_PERSONAL_ACCESS_TOKEN`). Core container env vars (such as `ANTHROPIC_API_KEY`, `AGENT_CONFIG_JSON`, `AGENT_ID`) cannot be overridden. When `mcp_servers` are present, agents auto-enable `ListMcpResources`, `ReadMcpResource`, and `mcp__{server}__*` tool permissions, and use Claude SDK permission mode `acceptEdits` by default. If you require stricter gating, set `permission_mode: plan` or `default` in the config.
 
 **Response:**
 ```json
